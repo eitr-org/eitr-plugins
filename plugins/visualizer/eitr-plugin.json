@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "id": "visualizer",
+  "name": "Visualizer",
+  "author": "The Eitr project",
+  "version": "0.1.0",
+  "description": "A glowing wave or terminal spectrum for your desktop",
+  "rows": [],
+  "capabilities": [
+    "audio-spectrum"
+  ],
+  "ui": {
+    "widgets": [
+      {
+        "id": "visualizer",
+        "title": "Visualizer",
+        "qml": "Visualizer.qml",
+        "defaultWidth": 900,
+        "defaultHeight": 180,
+        "minWidth": 120,
+        "minHeight": 40,
+        "surface": "none"
+      }
+    ]
+  },
+  "icon": "icon.svg"
+}
