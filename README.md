@@ -11,7 +11,9 @@ Official plugins for [Eitr](https://github.com/eitr-org/eitr), reviewed by the E
 In Walker, open **Install > Plugins > Add Plugin…**, paste
 `https://github.com/eitr-org/eitr-plugins`, and pick the plugins you want. Each one is
 reviewed separately before it is installed, pinned to the exact commit you approved,
-and updated only after you review its changes in System Update.
+and updated only after you review its changes with **Update Plugins** (Control Center >
+Plugins or Install > Plugins). System Update only tells you how many plugin updates
+are waiting.
 
 ## Writing a plugin
 
