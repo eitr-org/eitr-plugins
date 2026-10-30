@@ -1,9 +1,10 @@
 # Lofi Radio
 
-Plays lofi music using [lowfi](https://github.com/talwat/lowfi). Install the
-`lowfi` AUR package yourself: **Walker > Install > Packages > Yay (AUR)**, search
-`lowfi`, review its build files and confirm. This plugin never installs packages;
-without lowfi both rows say how to get it.
+Plays lofi music using [lowfi](https://github.com/talwat/lowfi), an AUR package
+(also in **Walker > Install > Packages > Yay (AUR)**). Without lowfi, both rows open
+Eitr's install screen (`eitr package install --aur lowfi`): it explains that AUR
+packages come from the community, offers the build file, and installs only when
+you press Enter. The plugin never installs anything by itself.
 
 ## Actions
 

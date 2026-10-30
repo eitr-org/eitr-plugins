@@ -87,7 +87,14 @@ def main():
                 notify('Player is starting or stopping; try again in a moment.')
             return
         if not shutil.which('lowfi'):
-            notify(INSTALL)
+            # Eitr's own install screen warns about the AUR, offers the build file, and
+            # installs only after Enter. Older Eitr builds without it get the notification.
+            if subprocess.run(['eitr', 'package', '--help'], capture_output=True, check=False).returncode == 0:
+                subprocess.Popen(['kitty', '--class', 'eitr-menu-terminal', '--title', 'Lofi Radio',
+                                  '-e', 'eitr', 'package', 'install', '--aur', 'lowfi'], start_new_session=True,
+                                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            else:
+                notify(INSTALL)
             return
         subprocess.Popen(['kitty', '--class', 'eitr-lofi-radio', '--title', 'Lofi Radio',
                           '-e', sys.executable, str(Path(__file__).resolve()), 'play'],

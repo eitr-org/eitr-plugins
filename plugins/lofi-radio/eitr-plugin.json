@@ -9,7 +9,7 @@
   "rows": [
     {
       "title": "Start / stop radio",
-      "description": "Needs lowfi: Install > Packages > Yay (AUR), search lowfi",
+      "description": "Play or stop lofi music; offers to install lowfi if it is missing",
       "run": "radio.py",
       "arguments": [
         "toggle"
