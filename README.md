@@ -5,6 +5,7 @@ Official plugins for [Eitr](https://github.com/eitr-org/eitr), reviewed by the E
 | Plugin | What it does |
 |---|---|
 | [Visualizer](plugins/visualizer) | A desktop audio visualizer that moves with whatever is playing, in a Wave or Terminal style |
+| [Lofi Radio](plugins/lofi-radio) | Lofi music through lowfi, controlled from the bar |
 
 ## Install
 

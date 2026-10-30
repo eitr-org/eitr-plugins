@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "id": "lofi-radio",
+  "name": "Lofi Radio",
+  "author": "The Eitr project",
+  "version": "0.1.0",
+  "description": "Lofi music through lowfi, controlled from the bar",
+  "icon": "icon.svg",
+  "rows": [
+    {
+      "title": "Start / stop radio",
+      "description": "Needs lowfi: Install > Packages > Yay (AUR), search lowfi",
+      "run": "radio.py",
+      "arguments": [
+        "toggle"
+      ]
+    },
+    {
+      "title": "Open player",
+      "description": "Show or hide the player",
+      "run": "radio.py",
+      "arguments": [
+        "open"
+      ]
+    }
+  ]
+}

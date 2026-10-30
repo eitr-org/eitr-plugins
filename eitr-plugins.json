@@ -4,6 +4,10 @@
     {
       "id": "visualizer",
       "path": "plugins/visualizer"
+    },
+    {
+      "id": "lofi-radio",
+      "path": "plugins/lofi-radio"
     }
   ]
 }
