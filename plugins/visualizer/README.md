@@ -8,7 +8,7 @@ with whatever is playing on your computer and follows your theme colours.
 - **Wave** (default): a smooth glowing wave, low tones in the centre mirrored
   outward, with soft afterimages and a reflection fading below it. When nothing
   plays it relaxes into a low line.
-- **Terminal**: classic spectrum bars from low to high tones, with a gradient in
+- **Bars**: classic spectrum bars from low to high tones, with a gradient in
   your theme's accent colour.
 
 ## Colors

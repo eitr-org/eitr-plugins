@@ -222,7 +222,7 @@ Item {
     function updateMenu() {
         if (typeof api.setMenu === "function")
             api.setMenu([{id: "wave", text: "Wave", checked: style === "wave"},
-                         {id: "terminal", text: "Terminal", checked: style === "terminal"},
+                         {id: "terminal", text: "Bars", checked: style === "terminal"},
                          {id: "accent", text: "Accent", checked: colors === "accent", group: "Colors"},
                          {id: "palette", text: "Palette", checked: colors === "palette", group: "Colors"}]);
     }
