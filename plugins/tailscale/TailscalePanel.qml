@@ -94,7 +94,7 @@ Item {
                 TailscaleLogo {
                     anchors.centerIn: parent
                     dot: 3
-                    color: panel.api.foreground
+                    color: panel.api.foreground.hslLightness > 0.5 ? "#ffffff" : "#000000"
                     opacity: panel.connected ? 1 : 0.45
                 }
             }

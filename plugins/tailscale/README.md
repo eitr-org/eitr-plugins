@@ -47,3 +47,6 @@ Notifications include file names, so they appear in notification history.
 Connect, Disconnect, Sign in, Send files (typed paths, reviewed by the Eitr wizard,
 own online devices only), Receive waiting files, and Allow this account to control
 Tailscale.
+
+"Tailscale" and the Tailscale logo are trademarks of Tailscale Inc. This plugin is
+not made or endorsed by Tailscale; the logo only identifies the service it controls.

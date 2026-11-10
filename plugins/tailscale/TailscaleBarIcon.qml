@@ -13,7 +13,8 @@ Item {
 
     TailscaleLogo {
         anchors.centerIn: parent
-        color: icon.api.foreground
+        // Tailscale's logo stays black or white, never tinted: white on dark bars, black on light.
+        color: icon.api.foreground.hslLightness > 0.5 ? "#ffffff" : "#000000"
         opacity: icon.connected ? 1 : 0.45
     }
 }
