@@ -6,6 +6,7 @@ Official plugins for [Eitr](https://github.com/eitr-org/eitr), reviewed by the E
 |---|---|
 | [Visualizer](plugins/visualizer) | A desktop audio visualizer that moves with whatever is playing, in a Wave or Terminal style |
 | [Lofi Radio](plugins/lofi-radio) | Lofi music through lowfi, controlled from the bar |
+| [Tailscale](plugins/tailscale) | Tailscale on the bar: connect, see your devices, copy their addresses and send or receive files |
 
 ## Install
 
@@ -21,6 +22,12 @@ are waiting.
 Read Eitr's plugin guide, `distro/PLUGINS.md` in the Eitr repository. Each plugin
 lives in its own folder under `plugins/` with its `eitr-plugin.json`, and is listed in
 `eitr-plugins.json`.
+
+## Checks
+
+Run `bash tools/check.sh` from this repository. The offline tests use the sibling
+`../eitr` checkout's manifest validator and install-review serializer. Networking,
+privilege requests and file transfers are mocked.
 
 ## License
 

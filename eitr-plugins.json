@@ -8,6 +8,10 @@
     {
       "id": "lofi-radio",
       "path": "plugins/lofi-radio"
+    },
+    {
+      "id": "tailscale",
+      "path": "plugins/tailscale"
     }
   ]
 }

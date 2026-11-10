@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 2,
+  "id": "tailscale",
+  "name": "Tailscale",
+  "author": "The Eitr project",
+  "version": "0.2.0",
+  "description": "Tailscale on the bar: connect, see your devices and send files",
+  "icon": "icon.svg",
+  "rows": [
+    {
+      "title": "Connect Tailscale",
+      "description": "Bring this computer onto your tailnet",
+      "run": "action.py",
+      "arguments": [
+        "connect"
+      ]
+    },
+    {
+      "title": "Disconnect Tailscale",
+      "description": "Take this computer off your tailnet",
+      "run": "action.py",
+      "arguments": [
+        "disconnect"
+      ]
+    },
+    {
+      "title": "Sign in to Tailscale",
+      "description": "Open the Tailscale sign-in page in your browser",
+      "run": "action.py",
+      "arguments": [
+        "login"
+      ]
+    },
+    {
+      "title": "Send files to a device",
+      "description": "Choose files and an online device belonging to your account",
+      "run": "action.py",
+      "arguments": [
+        "send"
+      ]
+    },
+    {
+      "title": "Receive waiting files",
+      "description": "Save waiting files in Documents/Taildrop and notify their names",
+      "run": "action.py",
+      "arguments": [
+        "receive"
+      ]
+    },
+    {
+      "title": "Allow this account to control Tailscale",
+      "description": "Explain and confirm the Tailscale operator command",
+      "run": "action.py",
+      "arguments": [
+        "operator"
+      ]
+    }
+  ],
+  "service": {
+    "run": "receive.py"
+  },
+  "ui": {
+    "barItems": [
+      {
+        "id": "status",
+        "title": "Tailscale",
+        "qml": "TailscaleBarIcon.qml",
+        "panel": "panel",
+        "dataCommand": {
+          "run": "status.py",
+          "arguments": [
+            "--json"
+          ]
+        },
+        "refreshInterval": 15000
+      }
+    ],
+    "panels": [
+      {
+        "id": "panel",
+        "title": "Tailscale",
+        "qml": "TailscalePanel.qml",
+        "surface": "panel",
+        "header": false,
+        "dataCommand": {
+          "run": "status.py",
+          "arguments": [
+            "--json"
+          ]
+        },
+        "refreshInterval": 5000
+      }
+    ]
+  },
+  "packages": [
+    "tailscale"
+  ]
+}
