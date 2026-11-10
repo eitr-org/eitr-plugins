@@ -158,6 +158,16 @@ def send_from_terminal():
     wait_for_escape()
 
 
+def ping(address):
+    """Three pings that say whether the path to a device is direct or through a relay."""
+    try:
+        ipaddress.ip_address(address)
+    except ValueError:
+        raise RuntimeError('Choose a device from the Tailscale panel to ping.') from None
+    subprocess.run(['tailscale', 'ping', '--c', '3', '--', address], check=False)
+    wait_for_escape()
+
+
 def receive():
     print(announce(fetch(wait=False, timeout=120)))
     print('Saved in ~/Documents/Taildrop.')
@@ -190,6 +200,17 @@ def main(action):
         send_from_terminal()
     elif action == 'receive':
         receive()
+    elif action == 'ping':
+        ping(sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] != '--terminal' else '')
+    elif action == 'status':
+        subprocess.run(['tailscale', 'status'], check=False)
+        print()
+        subprocess.run(['tailscale', 'netcheck'], check=False)
+        wait_for_escape()
+    elif action == 'undo-setup':
+        if not CORE_SETUP.is_file():
+            raise RuntimeError("This Eitr version has no Remote Access setup to undo.")
+        subprocess.run([sys.executable, str(CORE_SETUP), 'away', 'undo'], check=True)
     else:
         raise ValueError('Unknown action.')
 

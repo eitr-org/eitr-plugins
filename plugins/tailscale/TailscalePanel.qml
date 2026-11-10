@@ -217,10 +217,29 @@ Item {
                     api: panel.api
                     peer: modelData
                     canSend: panel.connected && modelData.taildrop === true
+                    canPing: panel.connected
                     copied: panel.copiedAddress !== "" && panel.copiedAddress === modelData.address
                     onSendRequested: address => panel.run(["send-to", address])
                     onCopyRequested: address => panel.copy(address)
+                    onPingRequested: address => panel.run(["ping", address])
                 }
+            }
+        }
+
+        // What Walker's Remote Access menu offered: a full report, and undoing Eitr's setup.
+        Row {
+            visible: panel.status !== null && panel.status.installed === true
+            spacing: 6
+            TailscaleButton {
+                api: panel.api
+                text: Eitr.I18n.tr("Detailed status")
+                onClicked: panel.run(["status"])
+            }
+            TailscaleButton {
+                api: panel.api
+                text: Eitr.I18n.tr("Undo setup")
+                description: Eitr.I18n.tr("Restore tailscaled startup and the previous operator")
+                onClicked: panel.run(["undo-setup"])
             }
         }
 

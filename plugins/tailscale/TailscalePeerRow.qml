@@ -10,9 +10,11 @@ Rectangle {
     required property var api
     required property var peer
     property bool canSend: false
+    property bool canPing: false
     property bool copied: false
     signal sendRequested(string address)
     signal copyRequested(string address)
+    signal pingRequested(string address)
 
     implicitHeight: 36
     radius: api.radius
@@ -77,6 +79,14 @@ Rectangle {
             glyph: "\u{F0552}"
             description: Eitr.I18n.tr("Send files with Taildrop")
             onClicked: row.sendRequested(row.peer.address)
+        }
+        TailscaleButton {
+            id: pingButton
+            api: row.api
+            visible: row.canPing && row.peer.address !== ""
+            glyph: "\u{F04C5}"
+            description: Eitr.I18n.tr("Ping: is the connection direct or relayed?")
+            onClicked: row.pingRequested(row.peer.address)
         }
         TailscaleButton {
             id: copyButton

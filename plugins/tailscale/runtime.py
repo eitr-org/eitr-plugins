@@ -24,19 +24,19 @@ def choose(title, options):
     return collect(title, [Step('choice', title, options=options)])['choice']
 
 
-def open_terminal(action):
-    """Run this script's ACTION again in Eitr's task terminal, detached."""
+def open_terminal(action, *arguments):
+    """Run this script's ACTION (with its ARGUMENTS) again in Eitr's task terminal, detached."""
     subprocess.Popen([str(ROOT / 'walker/bin/menu-path/kitty'), '--class', 'eitr-menu-terminal',
                       '--title', Path(__file__).parent.name, '-e', sys.executable,
                       str(ROOT / 'walker/scripts/actions/task-terminal.py'), sys.executable,
-                      str(Path(sys.argv[0]).resolve()), action, '--terminal'],
+                      str(Path(sys.argv[0]).resolve()), action, *arguments, '--terminal'],
                      start_new_session=True, stdin=subprocess.DEVNULL,
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def launch(main):
     if '--terminal' not in sys.argv:
-        open_terminal(sys.argv[1])
+        open_terminal(sys.argv[1], *sys.argv[2:])
         return
     try:
         main(sys.argv[1])

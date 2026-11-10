@@ -96,6 +96,15 @@ class TailscaleTests(unittest.TestCase):
                 plugin.background(['send-to', '--help'])
         self.assertNotIn('file', str(command.call_args_list))
 
+    def test_ping_runs_only_for_an_address(self):
+        plugin = load('tailscale')
+        with patch.object(plugin.subprocess, 'run') as command:
+            with self.assertRaises(RuntimeError):
+                plugin.ping('--help')
+            command.assert_not_called()
+            plugin.ping('100.64.0.9')
+        self.assertEqual(command.call_args.args[0], ['tailscale', 'ping', '--c', '3', '--', '100.64.0.9'])
+
     def test_send_to_passes_chosen_files_as_separate_arguments(self):
         plugin = load('tailscale')
         plugin.tailscale_status.read = Mock(return_value={'peers': [{'name': 'laptop', 'address': '100.64.0.1'}]})

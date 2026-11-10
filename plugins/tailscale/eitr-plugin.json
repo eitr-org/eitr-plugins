@@ -3,7 +3,7 @@
   "id": "tailscale",
   "name": "Tailscale",
   "author": "The Eitr project",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Tailscale on the bar: connect, see your devices and send files",
   "icon": "icon.svg",
   "rows": [
