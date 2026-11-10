@@ -11,8 +11,14 @@ with whatever is playing on your computer and follows your theme colours.
 - **Terminal**: classic spectrum bars from low to high tones, with a gradient in
   your theme's accent colour.
 
-Right-click the widget (or use Control Center > Plugins) to switch styles; Eitr
-shows them next to its own size, background and layer options. The choice is
+## Colors
+
+- **Accent** (default): one colour, from your theme's accent.
+- **Palette**: a gradient through your theme's yellow, red, magenta and blue,
+  from quiet to loud, so the tallest peaks reach the last colours.
+
+Right-click the widget (or use Control Center > Plugins) to switch styles and colours;
+Eitr shows them next to its own size, background and layer options. The choices are
 saved in `~/.config/eitr-plugin-visualizer/options.json`. The widget has a
 transparent background by default.
 

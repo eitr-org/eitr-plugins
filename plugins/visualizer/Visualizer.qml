@@ -10,6 +10,14 @@ Item {
     implicitWidth: 900
     implicitHeight: 180
     property string style: "wave"
+    // "accent": one colour from the theme accent; "palette": a gradient through the theme's
+    // yellow, red, magenta and blue (color3, color1, color5, color4), low to high.
+    property string colors: "accent"
+    readonly property var paletteStops: {
+        const palette = api.palette || {};
+        const picked = ["color3", "color1", "color5", "color4"].map(name => palette[name]).filter(value => !!value);
+        return picked.length === 4 ? picked : [secondAccent, api.accent, brightAccent, brightAccent];
+    }
     // Disable persistence for embedding and synthetic render harnesses.
     property bool persistOptions: true
     readonly property int count: 64
@@ -23,8 +31,6 @@ Item {
     property int ticks: 0
     property bool settled: false
     property bool ready: false
-    readonly property color reflectionNear: Qt.alpha(core, 0.33)
-    readonly property color reflectionFar: Qt.alpha(core, 0)
     readonly property color reflectionShadow: Qt.alpha(core, 0.08)
 
     function mix(first, second, amount) {
@@ -34,9 +40,11 @@ Item {
     }
     function save() {
         if (ready && persistOptions)
-            preferences.setText(JSON.stringify({version: 1, style: style}) + "\n");
+            preferences.setText(JSON.stringify({version: 1, style: style, colors: colors}) + "\n");
     }
     onStyleChanged: { settled = false; save(); updateMenu(); }
+    onColorsChanged: { canvas.barGradient = null; canvas.waveGradient = null; canvas.reflectionGradient = null; canvas.requestPaint(); save(); updateMenu(); }
+    onPaletteStopsChanged: { canvas.barGradient = null; canvas.waveGradient = null; canvas.reflectionGradient = null; canvas.requestPaint(); }
     onCoreChanged: { canvas.reflectionGradient = null; canvas.requestPaint(); }
     onSecondAccentChanged: { canvas.barGradient = null; canvas.requestPaint(); }
     onBrightAccentChanged: { canvas.barGradient = null; canvas.requestPaint(); }
@@ -52,6 +60,7 @@ Item {
                 if (saved.version === 1) {
                     root.ready = false;
                     root.style = saved.style === "terminal" ? "terminal" : "wave";
+                    root.colors = saved.colors === "palette" ? "palette" : "accent";
                 }
             } catch (error) { console.warn("Visualizer: ignoring invalid options JSON"); }
             root.ready = true;
@@ -108,9 +117,18 @@ Item {
         anchors.fill: parent
         renderStrategy: Canvas.Immediate
         property var barGradient: null
+        property var waveGradient: null
         property var reflectionGradient: null
         onWidthChanged: requestPaint()
-        onHeightChanged: { barGradient = null; reflectionGradient = null; requestPaint(); }
+        onHeightChanged: { barGradient = null; waveGradient = null; reflectionGradient = null; requestPaint(); }
+        // The palette runs low to high over the whole height, so taller bars reach later colours.
+        function paletteGradient(context, bottom, top) {
+            const gradient = context.createLinearGradient(0, bottom, 0, top);
+            const stops = root.paletteStops;
+            for (let index = 0; index < stops.length; ++index)
+                gradient.addColorStop(index / (stops.length - 1), stops[index]);
+            return gradient;
+        }
         // Frequency zero is at the centre; each side samples the same curve.
         function amplitude(point, offset) {
             const index = Math.min(root.count - 1, Math.abs(point - (root.count - 1)));
@@ -143,10 +161,13 @@ Item {
             context.clearRect(0, 0, width, height);
             if (root.style === "terminal") {
                 if (!barGradient) {
-                    barGradient = context.createLinearGradient(0, height, 0, 0);
-                    barGradient.addColorStop(0, root.secondAccent);
-                    barGradient.addColorStop(0.55, root.api.accent);
-                    barGradient.addColorStop(1, root.brightAccent);
+                    if (root.colors === "palette") barGradient = paletteGradient(context, height, 0);
+                    else {
+                        barGradient = context.createLinearGradient(0, height, 0, 0);
+                        barGradient.addColorStop(0, root.secondAccent);
+                        barGradient.addColorStop(0.55, root.api.accent);
+                        barGradient.addColorStop(1, root.brightAccent);
+                    }
                 }
                 context.fillStyle = barGradient;
                 const step = width / root.count;
@@ -157,9 +178,11 @@ Item {
                 }
                 return;
             }
-            context.fillStyle = root.core;
-            context.strokeStyle = root.core;
-            context.shadowColor = root.core;
+            if (root.colors === "palette" && !waveGradient) waveGradient = paletteGradient(context, height * 0.69, height * 0.09);
+            const ink = root.colors === "palette" ? waveGradient : root.core;
+            context.fillStyle = ink;
+            context.strokeStyle = ink;
+            context.shadowColor = root.colors === "palette" ? root.paletteStops[0] : root.core;
             for (let age = 4; age >= 0; --age) {
                 context.globalAlpha = 0.025 + (4 - age) * 0.025;
                 context.lineWidth = 3 + age;
@@ -180,8 +203,9 @@ Item {
             context.stroke();
             if (!reflectionGradient) {
                 reflectionGradient = context.createLinearGradient(0, height * 0.69, 0, height * 0.96);
-                reflectionGradient.addColorStop(0, root.reflectionNear);
-                reflectionGradient.addColorStop(1, root.reflectionFar);
+                const near = root.colors === "palette" ? root.paletteStops[0] : root.core;
+                reflectionGradient.addColorStop(0, Qt.alpha(near, 0.33));
+                reflectionGradient.addColorStop(1, Qt.alpha(near, 0));
             }
             context.globalAlpha = 1;
             context.fillStyle = reflectionGradient;
@@ -198,13 +222,16 @@ Item {
     function updateMenu() {
         if (typeof api.setMenu === "function")
             api.setMenu([{id: "wave", text: "Wave", checked: style === "wave"},
-                         {id: "terminal", text: "Terminal", checked: style === "terminal"}]);
+                         {id: "terminal", text: "Terminal", checked: style === "terminal"},
+                         {id: "accent", text: "Accent", checked: colors === "accent", group: "Colors"},
+                         {id: "palette", text: "Palette", checked: colors === "palette", group: "Colors"}]);
     }
     Connections {
         target: root.api
         ignoreUnknownSignals: true
         function onMenuTriggered(id) {
             if (id === "wave" || id === "terminal") root.style = id;
+            else if (id === "accent" || id === "palette") root.colors = id;
         }
     }
 }
