@@ -31,7 +31,10 @@ and Open folder run without a terminal and report failures as notifications. A s
 that needs a password or the browser (Sign in, Allow, Set up) opens Eitr's task
 terminal. Set up runs Eitr's reviewed Remote Access setup
 (`remote-access.py away setup`, which installs Tailscale and uses the root-owned
-`eitr-system` helper); the plugin has no root helper of its own.
+`eitr-system` helper); the plugin has no root helper of its own. While that setup is in
+place, Eitr's firewall also lets desktop sharing (Sunshine) through on the Tailscale
+interface, so Moonlight can reach this PC from your other devices; undoing the setup
+closes it again.
 
 ## Receiving files
 
