@@ -2,7 +2,7 @@
 
 Offline city times using Python's system IANA zoneinfo database, including daylight saving.
 Enable its bar item from Control Center > Plugins. Open **Control Center > General >
-Plugins > World clock** to add your first city; the bar stays empty until a city is selected. Search a city represented in IANA
+Plugins > World clock** to add your first city; until then the bar shows a globe that opens this panel. Search a city represented in IANA
 (for example Lisbon) or a full zone such as Europe/Lisbon. Zoneinfo is a timezone
 catalog, not a database of every town; nearby towns sharing a zone use that zone and
 an editable label.

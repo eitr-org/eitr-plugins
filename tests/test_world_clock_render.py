@@ -112,7 +112,7 @@ ShellRoot {
                 if (panel.status !== Loader.Ready || bar.status !== Loader.Ready || bar.item.implicitWidth <= 0) { console.error("Components not ready"); Qt.exit(1); return; }
                 const original = api.dataText;
                 api.dataText = JSON.stringify({cities: [], barCount:1, updated:2, zones:[]});
-                if (bar.item.implicitWidth !== 0 || bar.item.implicitHeight !== 0) { console.error("Empty bar must be zero-sized"); Qt.exit(1); return; }
+                if (bar.item.implicitWidth !== 24 || !bar.item.empty) { console.error("Empty bar must show the globe"); Qt.exit(1); return; }
                 api.dataText = original;
                 api.clockFormat = "12h";
                 Qt.callLater(() => {
