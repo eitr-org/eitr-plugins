@@ -31,7 +31,9 @@ Item {
         textFormat: Text.PlainText
         color: bar.api.foreground
         font.family: bar.api.fontFamily
-        font.pixelSize: bar.api.captionSize
+        // Bar text matches the clock and weather beside it: bold, at the host's bar size.
+        font.pixelSize: bar.api.barTextSize || 14
+        font.bold: true
         font.features: ({"tnum": 1})
     }
 }
