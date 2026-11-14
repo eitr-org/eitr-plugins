@@ -110,10 +110,10 @@ ShellRoot {
                 if (stage === -2) {
                     const dropdown = findControl(panel.item);
                     if (!dropdown || dropdown.count !== 10) { console.error("Missing 1–10 dropdown"); Qt.exit(1); return; }
-                    dropdown.popup.open();
+                    dropdown.expanded = true;
                     dropdown.currentIndex = 9;
                     dropdown.activated(9);
-                    dropdown.popup.close();
+                    dropdown.expanded = false;
                     stage = -1;
                 } else if (stage === -1 && current.barCount === 10) { stage = 0; }
                 else if (stage === 0) { panel.item.changeCity(0, "down", ""); stage = 1; }

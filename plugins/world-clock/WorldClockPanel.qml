@@ -164,7 +164,7 @@ Item {
                 api: panel.api
                 currentIndex: panel.status ? panel.status.barCount - 1 : 0
                 enabled: panel.status !== null && !panel.status.error && !writer.running
-                onActivated: { const settings = State.settings(panel.status); settings.barCount = currentIndex + 1; panel.save(settings); }
+                onActivated: index => { const settings = State.settings(panel.status); settings.barCount = index + 1; panel.save(settings); }
             }
         }
         TextField {
