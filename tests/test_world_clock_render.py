@@ -14,8 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 class WorldClockRenderTests(unittest.TestCase):
     def test_panel_and_bar_palettes_formats_and_empty_state(self):
         cities = [
-            {'zone': 'Europe/Lisbon', 'label': 'LIS', 'time24': '14:05', 'time12': '2:05 PM', 'day': 'Today', 'offset': '+3 h'},
-            {'zone': 'Asia/Tokyo', 'label': 'TYO', 'time24': '23:05', 'time12': '11:05 PM', 'day': 'Tomorrow', 'offset': '+12 h'},
+            {'zone': 'Europe/Lisbon', 'label': 'LIS', 'name': 'Lisbon', 'country': 'PT', 'flag': '🇵🇹', 'time24': '14:05', 'time12': '2:05 PM', 'day': 'Today', 'offset': '+3 h'},
+            {'zone': 'Asia/Tokyo', 'label': 'TYO', 'name': 'Tokyo', 'country': 'JP', 'flag': '🇯🇵', 'time24': '23:05', 'time12': '11:05 PM', 'day': 'Tomorrow', 'offset': '+12 h'},
             {'zone': 'America/New_York', 'label': 'NYC', 'time24': '09:05', 'time12': '9:05 AM', 'day': 'Today', 'offset': '-2 h'}
         ]
         with tempfile.TemporaryDirectory(prefix='eitr-world-render-') as directory:
@@ -42,7 +42,11 @@ class WorldClockRenderTests(unittest.TestCase):
                 self.assertTrue(all(Path(capture).is_file() for capture in captures))
                 settings = json.loads((folder / 'eitr/plugins/world-clock.json').read_text())
                 self.assertEqual(settings['barCount'], 1)
-                self.assertEqual([city['label'] for city in settings['cities']], ['HOME', 'NYC', 'DEL'])
+                self.assertEqual(settings['cities'][0]['name'], 'Lisbon')
+                self.assertEqual(settings['cities'][0]['country'], 'PT')
+                self.assertEqual(settings['cities'][-1]['name'], 'Tokyo')
+                self.assertEqual(settings['cities'][-1]['country'], 'JP')
+                self.assertEqual([city['label'] for city in settings['cities']], ['HOME', 'NYC', 'DEL', 'TOK'])
 
 
 FIXTURE = r"""
@@ -68,18 +72,19 @@ ShellRoot {
     FloatingWindow {
         id: window
         visible: true
-        implicitWidth: 440; implicitHeight: 560
+        implicitWidth: 440; implicitHeight: 820
         color: api.background
         Rectangle {
         id: canvas; anchors.fill: parent; color: api.background
         Loader {
             id: panel
-            x: 20; y: 20; width: 400
+            x: 20; y: 20; width: 400; height: 700; clip: true
             Component.onCompleted: setSource("PLUGIN/WorldClockPanel.qml", {api: api})
+            onLoaded: item.searchText = "california"
         }
         Rectangle {
             id: strip
-            x: 20; y: 480; width: 400; height: 50
+            x: 20; y: 750; width: 400; height: 50
             color: api.background
             border.color: Qt.alpha(api.foreground, 0.15)
             Loader {
@@ -98,23 +103,30 @@ ShellRoot {
                 else if (stage === 1 && current.cities[0].label === "TYO") { panel.item.changeCity(1, "label", "HOME"); stage = 2; }
                 else if (stage === 2 && current.cities[1].label === "HOME") { panel.item.changeCity(0, "remove", ""); stage = 3; }
                 else if (stage === 3 && current.cities.length === 2) {
-                    panel.item.save({barCount: 1, cities: current.cities.map(city => ({zone: city.zone, label: city.label})).concat([{zone:"Asia/Kolkata", label:"DEL"}])});
+                    panel.item.save({barCount: 1, cities: current.cities.map(city => (city.name ? {zone: city.zone, label: city.label, name:city.name, country:city.country} : {zone:city.zone, label:city.label})).concat([{zone:"Asia/Kolkata", label:"DEL"}])});
                     stage = 4;
                 } else if (stage === 4 && current.barCount === 1 && current.cities.length === 3 && current.cities[2].label === "DEL") {
+                    panel.item.addCity({zone:"Asia/Tokyo", label:"TOK", name:"Tokyo", country:"JP"});
+                    stage = 5;
+                } else if (stage === 5 && current.cities.length === 4 && current.cities[3].country === "JP") {
                     console.log("WORLD_CLOCK_RENDER_OK"); Qt.quit();
                 }
                 if (panel.item.error) { console.error(panel.item.error); Qt.exit(1); }
             }
         }
         Timer {
-            interval: 300; running: true
+            id: captureTimer
+            interval: 100; running: true; repeat: true
             onTriggered: {
                 if (panel.status !== Loader.Ready || bar.status !== Loader.Ready || bar.item.implicitWidth <= 0) { console.error("Components not ready"); Qt.exit(1); return; }
+                if (panel.item.matches.length !== 30) return;
+                captureTimer.stop();
                 const original = api.dataText;
                 api.dataText = JSON.stringify({cities: [], barCount:1, updated:2, zones:[]});
                 if (bar.item.implicitWidth !== 24 || !bar.item.empty) { console.error("Empty bar must show the globe"); Qt.exit(1); return; }
                 api.dataText = original;
                 api.clockFormat = "12h";
+                api.clockFormat = "24h";
                 Qt.callLater(() => {
                     canvas.grabToImage(result => {
                         result.saveToFile(CAPTURES[0]);

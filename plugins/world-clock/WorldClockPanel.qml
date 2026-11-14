@@ -9,11 +9,33 @@ Item {
     required property var api
     readonly property var streamed: State.latest(api)
     property var savedStatus: null
-    readonly property var status: savedStatus && (!streamed || savedStatus.updated > streamed.updated) ? savedStatus : streamed
+    readonly property var status: savedStatus && (!streamed || savedStatus.updated > streamed.updated) ? savedStatus : State.merge(streamed, savedStatus)
     property string error: ""
     readonly property string runtime: decodeURIComponent(Qt.resolvedUrl("runtime.py").toString().replace(/^file:\/\//, ""))
-    readonly property var matches: status && search.text.trim() ? status.zones.filter(zone =>
-        zone.replace(/_/g, " ").toLowerCase().indexOf(search.text.trim().replace(/_/g, " ").toLowerCase()) !== -1).slice(0, 12) : []
+    property var matches: []
+    property alias searchText: search.text
+    function runSearch() {
+        if (finder.running) return;
+        if (!search.text.trim()) { matches = []; return; }
+        finder.command = ["python3", runtime, "search", search.text.trim()];
+        finder.running = true;
+    }
+    Timer { id: debounce; interval: 180; onTriggered: panel.runSearch() }
+    Process {
+        id: finder
+        stdout: StdioCollector { id: found }
+        stderr: StdioCollector { id: searchFailure }
+        onExited: function(exitCode) {
+            if (exitCode !== 0) panel.error = searchFailure.text || "Search failed";
+            else {
+                try {
+                    const result = JSON.parse(found.text);
+                    if (result.query === search.text.trim()) panel.matches = result.matches;
+                    else debounce.restart();
+                } catch (error) { panel.error = "Could not read search results"; }
+            }
+        }
+    }
     implicitWidth: 400
     implicitHeight: body.implicitHeight
 
@@ -22,6 +44,15 @@ Item {
         error = "";
         writer.command = ["python3", runtime, "save", JSON.stringify(settings)];
         writer.running = true;
+    }
+    function addCity(result) {
+        if (!status || writer.running || status.cities.length >= 24
+                || status.cities.some(city => city.zone === result.zone)) return;
+        const settings = State.settings(status);
+        const city = {zone: result.zone, label: result.label};
+        if (result.country) { city.name = result.name; city.country = result.country; }
+        settings.cities.push(city);
+        save(settings);
     }
     function changeCity(index, action, label) {
         if (!status) return;
@@ -79,6 +110,11 @@ Item {
                 Rectangle { width: parent.width; height: 1; color: Qt.alpha(panel.api.foreground, 0.12) }
                 Row {
                     spacing: 6
+                    Text {
+                        text: cityRow.modelData.flag || ""
+                        width: 24; height: 32; verticalAlignment: Text.AlignVCenter
+                        font.pixelSize: 18
+                    }
                     TextField {
                         width: 92
                         text: cityRow.modelData.label
@@ -95,7 +131,7 @@ Item {
                     }
                     Text {
                         text: State.time(cityRow.modelData, panel.api.clockFormat)
-                        width: 112; height: 32; verticalAlignment: Text.AlignVCenter
+                        width: 88; height: 32; verticalAlignment: Text.AlignVCenter
                         color: panel.api.foreground
                         font.family: panel.api.fontFamily
                         font.pixelSize: panel.api.bodySize
@@ -106,7 +142,7 @@ Item {
                 }
                 Text {
                     width: parent.width
-                    text: cityRow.modelData.zone.replace(/_/g, " ") + " · " + cityRow.modelData.day + " · " + cityRow.modelData.offset
+                    text: (cityRow.modelData.name || cityRow.modelData.zone.replace(/_/g, " ")) + " · " + cityRow.modelData.day + " · " + cityRow.modelData.offset
                     textFormat: Text.PlainText
                     wrapMode: Text.Wrap
                     color: panel.api.foreground
@@ -134,7 +170,8 @@ Item {
             id: search
             width: parent.width
             enabled: panel.status !== null && !panel.status.error
-            placeholderText: "Search city or IANA time zone"
+            placeholderText: "Search city, state, country or time zone"
+            onTextChanged: { panel.matches = []; debounce.restart(); }
             color: panel.api.foreground
             placeholderTextColor: Qt.alpha(panel.api.foreground, 0.72)
             selectionColor: Qt.alpha(panel.api.accent, 0.35)
@@ -147,23 +184,56 @@ Item {
         }
         Repeater {
             model: panel.matches
-            WorldClockButton {
-                required property string modelData
-                api: panel.api
-                text: modelData.replace(/_/g, " ")
-                enabled: panel.status && panel.status.cities.length < 24 && !writer.running
-                    && !panel.status.cities.some(city => city.zone === modelData)
-                onClicked: {
-                    const settings = State.settings(panel.status);
-                    const name = modelData.split("/").pop().replace(/_/g, " ");
-                    settings.cities.push({zone: modelData, label: name.slice(0, 3).toUpperCase()});
-                    panel.save(settings);
+            Rectangle {
+                id: resultRow
+                required property var modelData
+                width: body.width; height: 48
+                radius: panel.api.radius
+                color: hover.containsMouse ? Qt.alpha(panel.api.foreground, 0.10) : "transparent"
+                property bool selectable: panel.status && panel.status.cities.length < 24 && !writer.running
+                    && !panel.status.cities.some(city => city.zone === modelData.zone)
+                opacity: selectable ? 1 : 0.5
+                activeFocusOnTab: selectable
+                Accessible.role: Accessible.Button
+                Accessible.name: modelData.name + ", " + modelData.state + ", " + modelData.countryName
+                function choose() {
+                    if (!selectable) return;
+                    panel.addCity(modelData);
+                }
+                Keys.onReturnPressed: choose()
+                Keys.onSpacePressed: choose()
+                border.width: activeFocus ? 1 : 0
+                border.color: panel.api.accent
+                Text {
+                    x: 4; width: 28; anchors.verticalCenter: parent.verticalCenter
+                    text: resultRow.modelData.flag; font.pixelSize: 18
+                }
+                Column {
+                    x: 38; width: parent.width - 42; anchors.verticalCenter: parent.verticalCenter
+                    Text {
+                        width: parent.width; elide: Text.ElideRight
+                        text: resultRow.modelData.name; textFormat: Text.PlainText
+                        color: panel.api.foreground; font.family: panel.api.fontFamily; font.pixelSize: panel.api.bodySize
+                    }
+                    Text {
+                        width: parent.width; elide: Text.ElideRight
+                        text: [resultRow.modelData.state, resultRow.modelData.countryName].filter(value => value).join(", ")
+                        textFormat: Text.PlainText
+                        color: panel.api.foreground; opacity: 0.72
+                        font.family: panel.api.fontFamily; font.pixelSize: panel.api.captionSize
+                    }
+                }
+                MouseArea {
+                    id: hover; anchors.fill: parent; hoverEnabled: true
+                    cursorShape: resultRow.selectable ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onClicked: resultRow.choose()
                 }
             }
         }
+
         Text {
             visible: search.text.trim() !== "" && panel.matches.length === 0
-            text: "No matching time zones"
+            text: finder.running || debounce.running ? "Searching…" : "No matching cities or time zones"
             color: panel.api.foreground
             font.family: panel.api.fontFamily
             font.pixelSize: panel.api.captionSize

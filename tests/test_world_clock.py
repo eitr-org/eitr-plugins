@@ -103,3 +103,62 @@ class WorldClockTests(unittest.TestCase):
         self.assertNotIn('packages', manifest)
         self.assertNotIn('service', manifest)
         self.assertLess(len(json.dumps({'zones': sorted(clock.available_timezones())})), 65536)
+
+    def test_search_examples_ranking_and_accents(self):
+        self.assertEqual(clock.search('sao paulo'), clock.search('São Paulo'))
+        self.assertEqual(clock.search('SÃO PAULO')[0]['name'], 'São Paulo')
+        self.assertEqual((clock.search('porto')[0]['name'], clock.search('porto')[0]['country']), ('Porto', 'PT'))
+        california = clock.search('california')
+        self.assertEqual(california[0]['name'], 'Los Angeles')
+        self.assertTrue(all(city['zone'] == 'America/Los_Angeles' for city in california))
+        brazil = clock.search('brazil')
+        self.assertEqual(brazil[0]['name'], 'São Paulo')
+        self.assertGreater(len({city['zone'] for city in brazil}), 1)
+        self.assertEqual(clock.search('tokyo')[0]['zone'], 'Asia/Tokyo')
+        self.assertEqual(clock.search('Europe/Lisbon')[0]['zone'], 'Europe/Lisbon')
+        self.assertEqual(clock.search('UTC')[0]['zone'], 'UTC')
+        self.assertEqual(clock.search(''), [])
+        self.assertEqual(clock.search('no such city xyz'), [])
+        self.assertLessEqual(len(clock.search('a')), 30)
+        with self.assertRaises(ValueError):
+            clock.search('a' * 101)
+        with self.assertRaises(ValueError):
+            clock.search('\n')
+        for query in ('porto', 'brazil', 'california'):
+            self.assertLess(len(json.dumps(clock.search(query)).encode()), 65536)
+
+    def test_city_metadata_flags_and_validation(self):
+        city = clock.search('Europe/Lisbon')[0]
+        settings = {'barCount': 1, 'cities': [{key: city[key] for key in ('zone', 'label', 'name', 'country')}]}
+        self.assertEqual(clock.validate(settings), settings)
+        self.assertEqual(clock.clock_rows(settings)[0]['flag'], '🇵🇹')
+        self.assertEqual(clock.flag('JP'), '🇯🇵')
+        self.assertEqual(clock.flag(''), '')
+        self.assertEqual(clock.flag('1A'), '')
+        for changes in ({'country': 'ZZ'}, {'country': []}, {'name': 'x' * 201}, {'name': '\n'}, {'extra': True}):
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                clock.validate({'barCount': 1, 'cities': [{**settings['cities'][0], **changes}]})
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {'XDG_CONFIG_HOME': directory}):
+            clock.save_settings(settings)
+            self.assertEqual(clock.read_settings(), settings)
+        longest = sorted(clock.zones(), key=len, reverse=True)[:24]
+        with patch.object(clock, 'read_settings', return_value={'barCount': 2, 'cities': [
+                {'zone': zone, 'label': '🌍' * 12, 'name': 'x' * 200, 'country': 'JP'} for zone in longest]}):
+            self.assertLessEqual(len(clock.stream_snapshot().encode()), 4096)
+
+    def test_generator_reproducible_and_filters_unknown_zones(self):
+        import gzip
+        generator_spec = importlib.util.spec_from_file_location('clock_generator', ROOT / 'tools/build_world_clock_data.py')
+        generator = importlib.util.module_from_spec(generator_spec)
+        generator_spec.loader.exec_module(generator)
+        source = ROOT.parent / 'data'
+        if not source.is_dir():
+            self.skipTest('Local GeoNames source files required for regeneration')
+        generated = generator.build(source)
+        self.assertEqual(generated, clock.catalog())
+        self.assertEqual(generator.build(source, set())['cities'], [])
+        self.assertTrue(all(city[4] in clock.zones() for city in generated['cities']))
+        encoded = json.dumps(generated, ensure_ascii=False, separators=(',', ':')).encode()
+        self.assertEqual(gzip.compress(encoded, mtime=0), (ROOT / 'plugins/world-clock/data/cities.json.gz').read_bytes())
+        self.assertIs(clock.catalog(), clock.catalog())
+        self.assertIs(clock.search_index(), clock.search_index())

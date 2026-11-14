@@ -13,10 +13,15 @@ assert.equal(current.cities[0].zone, "Europe/Lisbon");
 assert.equal(current.cities[0].label, "LIS");
 assert.equal(state.time(current.cities[0], "24h"), "14:05");
 assert.equal(state.time(current.cities[0], "12h"), "2:05 PM");
-assert.equal(current.zones[0], "Europe/Lisbon");
+assert.equal(current.zones.length, 0);
 assert.equal(state.settings(current).barCount, 2);
 assert.deepEqual(JSON.parse(JSON.stringify(state.settings(current).cities)), [{zone: "Europe/Lisbon", label: "LIS"}]);
 api.dataText = JSON.stringify({...catalog, updated: 3});
 assert.equal(state.latest(api).cities.length, 0);
 assert.equal(state.parse("not JSON"), null);
 console.log("World clock stream decoding, catalog merge and time-format checks passed");
+
+const rich = state.merge(current, {cities:[{zone:"Europe/Lisbon", name:"Lisbon", country:"PT"}]});
+assert.equal(rich.cities[0].name, "Lisbon");
+assert.equal(state.settings(rich).cities[0].country, "PT");
+assert.equal(state.parse(JSON.stringify({cities:[["Asia/Tokyo", "TYO", "23:05", "11:05 PM", "Today", "+12 h", "🇯🇵"]]})).cities[0].flag, "🇯🇵");
