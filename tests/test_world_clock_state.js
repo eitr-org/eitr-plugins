@@ -25,3 +25,18 @@ const rich = state.merge(current, {cities:[{zone:"Europe/Lisbon", name:"Lisbon",
 assert.equal(rich.cities[0].name, "Lisbon");
 assert.equal(state.settings(rich).cities[0].country, "PT");
 assert.equal(state.parse(JSON.stringify({cities:[["Asia/Tokyo", "TYO", "23:05", "11:05 PM", "Today", "+12 h", "🇯🇵"]]})).cities[0].flag, "🇯🇵");
+
+const shared = {cities: [
+    {key:"state-key", zone:"America/Los_Angeles", name:"California", country:"US", label:"CAL"},
+    {key:"city-key", zone:"America/Los_Angeles", name:"Los Angeles", country:"US", label:"LAX"}
+]};
+const duplicates = state.parse(JSON.stringify({barCount:10, cities: [
+    ["America/Los_Angeles", "LAX", "14:05", "2:05 PM", "Today", "+3 h", "🇺🇸", "city-key"],
+    ["America/Los_Angeles", "CAL", "14:05", "2:05 PM", "Today", "+3 h", "🇺🇸", "state-key"]
+]}));
+const merged = state.merge(duplicates, shared);
+assert.equal(merged.cities[0].name, "Los Angeles");
+assert.equal(merged.cities[1].name, "California");
+assert.equal(state.settings(merged).cities[1].name, "California");
+assert.equal(state.merge({cities:[]}, shared).cities.length, 0);
+console.log("Duplicate-zone identity and state metadata checks passed");

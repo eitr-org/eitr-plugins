@@ -96,10 +96,27 @@ ShellRoot {
         Timer {
             id: edits
             interval: 100; repeat: true
-            property int stage: 0
+            property int stage: -2
+            function findControl(item) {
+                if (item.objectName === "barCountDropdown") return item;
+                for (const child of item.children || []) {
+                    const found = findControl(child);
+                    if (found) return found;
+                }
+                return null;
+            }
             onTriggered: {
                 const current = panel.item.status;
-                if (stage === 0) { panel.item.changeCity(0, "down", ""); stage = 1; }
+                if (stage === -2) {
+                    const dropdown = findControl(panel.item);
+                    if (!dropdown || dropdown.count !== 10) { console.error("Missing 1–10 dropdown"); Qt.exit(1); return; }
+                    dropdown.popup.open();
+                    dropdown.currentIndex = 9;
+                    dropdown.activated(9);
+                    dropdown.popup.close();
+                    stage = -1;
+                } else if (stage === -1 && current.barCount === 10) { stage = 0; }
+                else if (stage === 0) { panel.item.changeCity(0, "down", ""); stage = 1; }
                 else if (stage === 1 && current.cities[0].label === "TYO") { panel.item.changeCity(1, "label", "HOME"); stage = 2; }
                 else if (stage === 2 && current.cities[1].label === "HOME") { panel.item.changeCity(0, "remove", ""); stage = 3; }
                 else if (stage === 3 && current.cities.length === 2) {

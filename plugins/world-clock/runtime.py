@@ -6,6 +6,7 @@ import fcntl
 from functools import lru_cache
 import json
 import gzip
+import hashlib
 import unicodedata
 import os
 from pathlib import Path
@@ -40,6 +41,20 @@ def search_index():
             for city in data['cities']]
 
 
+@lru_cache(maxsize=1)
+def states():
+    largest = {}
+    for city in catalog()['cities']:
+        key = (city[3], city[2])
+        if city[2] and (key not in largest or city[5] > largest[key][5]):
+            largest[key] = city
+    return list(largest.values())
+
+
+def row_key(city):
+    return hashlib.sha256(json.dumps([city['zone'], city.get('name', '')], ensure_ascii=False).encode()).hexdigest()[:12]
+
+
 def flag(country):
     return ''.join(chr(0x1F1E6 + ord(character) - ord('A')) for character in country) if len(country) == 2 and country.isascii() and country.isupper() and country.isalpha() else ''
 
@@ -57,6 +72,12 @@ def search(query):
     results = [dict(name=city[0], state=city[2], country=city[3], countryName=catalog()['countries'][city[3]],
                     zone=city[4], label=city[1][:3].upper(), flag=flag(city[3]))
                for _, _, city in matches[:30]]
+    state_matches = [city for city in states() if query in normalize(city[2])]
+    state_matches.sort(key=lambda city: (normalize(city[2]) != query, not normalize(city[2]).startswith(query), -city[5], city[2], city[3]))
+    results = ([dict(name=city[2], state='', kind='state', country=city[3],
+                     countryName=catalog()['countries'][city[3]], zone=city[4],
+                     label=city[2][:3].upper(), flag=flag(city[3]), zoneCity=city[0])
+                for city in state_matches] + results)[:30]
     # Keep every IANA entry searchable, including zones with no catalog city.
     if len(results) < 30:
         represented = {city['zone'] for city in results}
@@ -83,8 +104,8 @@ def settings_path():
 def validate(settings):
     if not isinstance(settings, dict) or set(settings) != {'cities', 'barCount'}:
         raise ValueError('Invalid world clock settings')
-    if type(settings['barCount']) is not int or settings['barCount'] not in (1, 2):
-        raise ValueError('Choose one or two bar cities')
+    if type(settings['barCount']) is not int or not 1 <= settings['barCount'] <= 10:
+        raise ValueError('Choose 1–10 bar clocks')
     cities = settings['cities']
     if not isinstance(cities, list) or len(cities) > MAX_CITIES:
         raise ValueError('Choose at most 24 cities')
@@ -98,11 +119,11 @@ def validate(settings):
                     or not isinstance(city['country'], str) or city['country'] not in catalog()['countries']):
                 raise ValueError('Invalid city metadata')
         zone, label = city['zone'], city['label']
-        if not isinstance(zone, str) or zone not in zones() or zone in seen:
-            raise ValueError('Choose a unique IANA time zone')
+        if not isinstance(zone, str) or zone not in zones() or (zone, city.get('name', '')) in seen:
+            raise ValueError('Choose a unique time zone and name')
         if not isinstance(label, str) or not label.strip() or len(label) > 12 or any(not character.isprintable() for character in label):
             raise ValueError('Labels must contain 1–12 printable characters')
-        seen.add(zone)
+        seen.add((zone, city.get('name', '')))
     return settings
 
 
@@ -140,7 +161,7 @@ def clock_rows(settings, now=None, local_zone=None):
         if remainder:
             offset += ' ' + str(remainder).zfill(2)
         day = (there.date() - local.date()).days
-        rows.append({**city, 'flag': flag(city.get('country', '')), 'time24': there.strftime('%H:%M'),
+        rows.append({**city, 'key': row_key(city), 'flag': flag(city.get('country', '')), 'time24': there.strftime('%H:%M'),
                      'time12': there.strftime('%I:%M %p').lstrip('0'),
                      'day': 'Yesterday' if day < 0 else 'Tomorrow' if day > 0 else 'Today',
                      'offset': offset})
@@ -160,13 +181,33 @@ def snapshot():
 def stream_snapshot():
     data = snapshot()
     data.pop('zones', None)
-    data['cities'] = [[city[key] for key in ('zone', 'label', 'time24', 'time12', 'day', 'offset', 'flag')]
+    data['cities'] = [[city[key] for key in ('zone', 'label', 'time24', 'time12', 'day', 'offset', 'flag', 'key')]
                       for city in data['cities']]
     return json.dumps(data, ensure_ascii=False, separators=(',', ':'))
 
 
 def minute_delay(timestamp):
     return 60 - timestamp % 60
+
+
+def settings_signature():
+    try:
+        stat = settings_path().stat()
+        return stat.st_ino, stat.st_mtime_ns, stat.st_size
+    except FileNotFoundError:
+        return None
+
+
+def stream():
+    while True:
+        signature = settings_signature()
+        print(stream_snapshot(), flush=True)
+        deadline = time.monotonic() + minute_delay(time.time())
+        while settings_signature() == signature:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            time.sleep(min(1, remaining))
 
 
 def main():
@@ -185,9 +226,7 @@ def main():
             fcntl.flock(lock, fcntl.LOCK_EX)
             save_settings(settings)
     if arguments.action == 'stream':
-        while True:
-            print(stream_snapshot(), flush=True)
-            time.sleep(minute_delay(time.time()))
+        stream()
     else:
         print(json.dumps(snapshot(), ensure_ascii=False))
 

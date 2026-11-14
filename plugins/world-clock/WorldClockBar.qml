@@ -7,7 +7,7 @@ Item {
     readonly property var status: State.latest(api)
     readonly property bool empty: !bar.status || bar.status.cities.length === 0 || bar.status.barCount === 0
     // With no cities chosen yet, a globe keeps the item visible so a click opens the panel.
-    implicitWidth: empty ? 24 : Math.min(360, label.implicitWidth)
+    implicitWidth: empty ? 24 : label.implicitWidth
     clip: true
     implicitHeight: 24
     Text {
@@ -21,9 +21,10 @@ Item {
     }
     Text {
         id: label
-        width: Math.min(360, implicitWidth)
+        width: bar.width
         elide: Text.ElideRight
-        anchors.centerIn: parent
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
         visible: !bar.empty
         text: !bar.empty ? bar.status.cities.slice(0, bar.status.barCount).map(city =>
             (city.flag ? city.flag + " " : "") + city.label + " " + State.time(city, bar.api.clockFormat)).join(" · ") : ""

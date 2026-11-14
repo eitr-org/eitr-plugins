@@ -10,6 +10,9 @@ Item {
     readonly property var streamed: State.latest(api)
     property var savedStatus: null
     readonly property var status: savedStatus && (!streamed || savedStatus.updated > streamed.updated) ? savedStatus : State.merge(streamed, savedStatus)
+    onStreamedChanged: {
+        if (streamed && streamed.cities.some(city => city.key && city.flag && !city.name)) api.runDataCommand();
+    }
     property string error: ""
     readonly property string runtime: decodeURIComponent(Qt.resolvedUrl("runtime.py").toString().replace(/^file:\/\//, ""))
     property var matches: []
@@ -41,13 +44,14 @@ Item {
 
     function save(settings) {
         if (writer.running) return;
+        if (status && status.cities.some(city => city.key && city.flag && !city.name)) { api.runDataCommand(); return; }
         error = "";
         writer.command = ["python3", runtime, "save", JSON.stringify(settings)];
         writer.running = true;
     }
     function addCity(result) {
         if (!status || writer.running || status.cities.length >= 24
-                || status.cities.some(city => city.zone === result.zone)) return;
+                || status.cities.some(city => city.zone === result.zone && (city.name || "") === (result.country ? result.name : ""))) return;
         const settings = State.settings(status);
         const city = {zone: result.zone, label: result.label};
         if (result.country) { city.name = result.name; city.country = result.country; }
@@ -155,15 +159,12 @@ Item {
         Row {
             spacing: 6
             Text { text: "Cities on the bar"; height: 32; verticalAlignment: Text.AlignVCenter; color: panel.api.foreground; font.family: panel.api.fontFamily; font.pixelSize: panel.api.bodySize }
-            Repeater {
-                model: [1, 2]
-                WorldClockButton {
-                    required property int modelData
-                    api: panel.api
-                    text: (panel.status && panel.status.barCount === modelData ? "✓ " : "") + modelData
-                    enabled: panel.status !== null && !panel.status.error && !writer.running
-                    onClicked: { const settings = State.settings(panel.status); settings.barCount = modelData; panel.save(settings); }
-                }
+            WorldClockDropdown {
+                objectName: "barCountDropdown"
+                api: panel.api
+                currentIndex: panel.status ? panel.status.barCount - 1 : 0
+                enabled: panel.status !== null && !panel.status.error && !writer.running
+                onActivated: { const settings = State.settings(panel.status); settings.barCount = currentIndex + 1; panel.save(settings); }
             }
         }
         TextField {
@@ -191,7 +192,7 @@ Item {
                 radius: panel.api.radius
                 color: hover.containsMouse ? Qt.alpha(panel.api.foreground, 0.10) : "transparent"
                 property bool selectable: panel.status && panel.status.cities.length < 24 && !writer.running
-                    && !panel.status.cities.some(city => city.zone === modelData.zone)
+                    && !panel.status.cities.some(city => city.zone === modelData.zone && (city.name || "") === (modelData.country ? modelData.name : ""))
                 opacity: selectable ? 1 : 0.5
                 activeFocusOnTab: selectable
                 Accessible.role: Accessible.Button
@@ -217,7 +218,7 @@ Item {
                     }
                     Text {
                         width: parent.width; elide: Text.ElideRight
-                        text: [resultRow.modelData.state, resultRow.modelData.countryName].filter(value => value).join(", ")
+                        text: resultRow.modelData.kind === "state" ? "State · " + resultRow.modelData.countryName + " · " + resultRow.modelData.zoneCity + " time" : [resultRow.modelData.state, resultRow.modelData.countryName].filter(value => value).join(", ")
                         textFormat: Text.PlainText
                         color: panel.api.foreground; opacity: 0.72
                         font.family: panel.api.fontFamily; font.pixelSize: panel.api.captionSize

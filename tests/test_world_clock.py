@@ -50,6 +50,48 @@ class WorldClockTests(unittest.TestCase):
         row, = clock.clock_rows(self.settings(), instant, timezone.utc)
         self.assertEqual(row['day'], 'Today')
 
+    def test_bar_counts_states_and_duplicate_zones(self):
+        for count in range(1, 11):
+            self.assertEqual(clock.validate({'barCount': count, 'cities': []})['barCount'], count)
+        results = clock.search('california')
+        state = results[0]
+        city = next(result for result in results if result['name'] == 'Los Angeles')
+        self.assertEqual((state['kind'], state['zoneCity'], state['label']), ('state', 'Los Angeles', 'CAL'))
+        self.assertEqual(city['name'], 'Los Angeles')
+        settings = {'barCount': 10, 'cities': [{key: result[key] for key in ('zone', 'label', 'name', 'country')} for result in (state, city)]}
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {'XDG_CONFIG_HOME': directory}):
+            clock.save_settings(settings)
+            self.assertEqual(clock.read_settings(), settings)
+        self.assertNotEqual(*[row['key'] for row in clock.clock_rows(settings)])
+        with self.assertRaises(ValueError):
+            clock.validate({**settings, 'cities': [settings['cities'][0]] * 2})
+
+    def test_stream_reemits_after_save_and_removal(self):
+        import selectors
+        import subprocess
+        with tempfile.TemporaryDirectory() as directory:
+            environment = dict(os.environ, XDG_CONFIG_HOME=directory)
+            process = subprocess.Popen([sys.executable, str(ROOT / 'plugins/world-clock/runtime.py'), 'stream'], env=environment, stdout=subprocess.PIPE)
+            selector = selectors.DefaultSelector()
+            selector.register(process.stdout, selectors.EVENT_READ)
+            def receive():
+                self.assertTrue(selector.select(3), 'No stream update within three seconds')
+                return json.loads(process.stdout.readline())
+            try:
+                self.assertEqual(receive()['cities'], [])
+                with patch.dict(os.environ, {'XDG_CONFIG_HOME': directory}):
+                    clock.save_settings(self.settings())
+                    self.assertEqual(len(receive()['cities']), 1)
+                    clock.save_settings({'barCount': 10, 'cities': []})
+                    self.assertEqual(receive()['cities'], [])
+                    clock.settings_path().unlink()
+                    self.assertEqual(receive()['barCount'], 1)
+            finally:
+                process.terminate()
+                process.wait(timeout=3)
+                process.stdout.close()
+                selector.close()
+
     def test_minute_alignment(self):
         self.assertEqual(clock.minute_delay(120), 60)
         self.assertAlmostEqual(clock.minute_delay(123.75), 56.25)
@@ -72,7 +114,7 @@ class WorldClockTests(unittest.TestCase):
     def test_reject_invalid_settings_without_writes(self):
         for settings in [
                 {'cities': [], 'barCount': True},
-                {'cities': [], 'barCount': 3},
+                {'cities': [], 'barCount': 11},
                 {'cities': [{'zone': '../../etc/passwd', 'label': 'bad'}], 'barCount': 1},
                 {'cities': [{'zone': 'UTC', 'label': '\n'}], 'barCount': 1},
                 {'cities': [{'zone': 'UTC', 'label': 'A'}] * 2, 'barCount': 1},
@@ -109,8 +151,9 @@ class WorldClockTests(unittest.TestCase):
         self.assertEqual(clock.search('SÃO PAULO')[0]['name'], 'São Paulo')
         self.assertEqual((clock.search('porto')[0]['name'], clock.search('porto')[0]['country']), ('Porto', 'PT'))
         california = clock.search('california')
-        self.assertEqual(california[0]['name'], 'Los Angeles')
-        self.assertTrue(all(city['zone'] == 'America/Los_Angeles' for city in california))
+        self.assertEqual(california[0]['name'], 'California')
+        self.assertEqual(california[0]['zone'], 'America/Los_Angeles')
+        self.assertTrue(any(city['name'] == 'Los Angeles' for city in california))
         brazil = clock.search('brazil')
         self.assertEqual(brazil[0]['name'], 'São Paulo')
         self.assertGreater(len({city['zone'] for city in brazil}), 1)
