@@ -7,6 +7,9 @@ export PYTHONPYCACHEPREFIX="$scratch/pycache"
 export PYTHONDONTWRITEBYTECODE=1
 python3 -m unittest discover -s tests -v
 python3 -m compileall -q plugins tests
+if command -v node >/dev/null; then
+  node tests/test_world_clock_state.js
+fi
 if command -v shellcheck >/dev/null; then
   shellcheck tools/check.sh
 fi

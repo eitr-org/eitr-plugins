@@ -12,6 +12,10 @@
     {
       "id": "tailscale",
       "path": "plugins/tailscale"
+    },
+    {
+      "id": "world-clock",
+      "path": "plugins/world-clock"
     }
   ]
 }

@@ -224,7 +224,7 @@ class ManifestTests(unittest.TestCase):
                 result = eitr_plugin_review.check(folder)
                 self.assertIn('Offline review transport verified.', result)
                 self.assertIn('action.py', assistant.call_args.args[0])
-        self.assertEqual(len(eitr_plugin_manifest.repository_plugins(ROOT)), 3)
+        self.assertEqual(len(eitr_plugin_manifest.repository_plugins(ROOT)), 4)
 
     def test_tailscale_declares_bar_item_panel_and_receiver_service(self):
         import eitr_plugin_manifest
