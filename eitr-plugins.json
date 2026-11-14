@@ -10,6 +10,14 @@
       "path": "plugins/lofi-radio"
     },
     {
+      "id": "wireguard",
+      "path": "plugins/wireguard"
+    },
+    {
+      "id": "networkmanager-vpn",
+      "path": "plugins/networkmanager-vpn"
+    },
+    {
       "id": "tailscale",
       "path": "plugins/tailscale"
     }

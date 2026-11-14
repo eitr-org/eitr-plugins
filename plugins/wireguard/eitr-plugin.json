@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 2,
+  "id": "wireguard",
+  "name": "WireGuard",
+  "author": "The Eitr project",
+  "version": "0.2.0",
+  "description": "WireGuard on the bar: import, connect, inspect and remove tunnels",
+  "icon": "icon.svg",
+  "rows": [
+    {
+      "title": "Import a config",
+      "description": "Review and import a .conf file; keeps the tunnel disconnected",
+      "run": "action.py",
+      "arguments": [
+        "import"
+      ]
+    },
+    {
+      "title": "Connect a tunnel",
+      "description": "Choose a saved WireGuard tunnel to connect",
+      "run": "action.py",
+      "arguments": [
+        "up"
+      ]
+    },
+    {
+      "title": "Disconnect a tunnel",
+      "description": "Choose a saved WireGuard tunnel to disconnect",
+      "run": "action.py",
+      "arguments": [
+        "down"
+      ]
+    },
+    {
+      "title": "Remove a tunnel",
+      "description": "Confirm and remove a saved WireGuard tunnel",
+      "run": "action.py",
+      "arguments": [
+        "remove"
+      ]
+    },
+    {
+      "title": "Status",
+      "description": "Show saved tunnels and their connection state",
+      "run": "action.py",
+      "arguments": [
+        "status"
+      ]
+    }
+  ],
+  "ui": {
+    "barItems": [
+      {
+        "id": "status",
+        "title": "WireGuard",
+        "qml": "WireGuardBarIcon.qml",
+        "panel": "panel",
+        "dataCommand": {
+          "run": "status.py",
+          "arguments": [
+            "--json"
+          ]
+        },
+        "refreshInterval": 15000
+      }
+    ],
+    "panels": [
+      {
+        "id": "panel",
+        "title": "WireGuard",
+        "qml": "WireGuardPanel.qml",
+        "surface": "panel",
+        "header": false,
+        "dataCommand": {
+          "run": "status.py",
+          "arguments": [
+            "--json"
+          ]
+        },
+        "refreshInterval": 5000
+      }
+    ]
+  },
+  "packages": [
+    "wireguard-tools"
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 2,
+  "id": "networkmanager-vpn",
+  "name": "NetworkManager VPN",
+  "author": "The Eitr project",
+  "version": "0.2.0",
+  "description": "NetworkManager VPN on the bar: OpenVPN, OpenConnect and WireGuard",
+  "icon": "icon.svg",
+  "rows": [
+    {
+      "title": "Import an OpenVPN profile",
+      "description": "Import an .ovpn or .conf file into NetworkManager",
+      "run": "action.py",
+      "arguments": [
+        "import"
+      ]
+    },
+    {
+      "title": "Connect a VPN profile",
+      "description": "Choose a saved VPN profile to connect",
+      "run": "action.py",
+      "arguments": [
+        "up"
+      ]
+    },
+    {
+      "title": "Disconnect a VPN profile",
+      "description": "Choose a saved VPN profile to disconnect",
+      "run": "action.py",
+      "arguments": [
+        "down"
+      ]
+    },
+    {
+      "title": "Status",
+      "description": "Show saved VPN profiles and their connection state",
+      "run": "action.py",
+      "arguments": [
+        "status"
+      ]
+    }
+  ],
+  "ui": {
+    "barItems": [
+      {
+        "id": "status",
+        "title": "NetworkManager VPN",
+        "qml": "VpnBarIcon.qml",
+        "panel": "panel",
+        "dataCommand": {
+          "run": "status.py",
+          "arguments": [
+            "--json"
+          ]
+        },
+        "refreshInterval": 15000
+      }
+    ],
+    "panels": [
+      {
+        "id": "panel",
+        "title": "NetworkManager VPN",
+        "qml": "VpnPanel.qml",
+        "surface": "panel",
+        "header": false,
+        "dataCommand": {
+          "run": "status.py",
+          "arguments": [
+            "--json"
+          ]
+        },
+        "refreshInterval": 5000
+      }
+    ]
+  },
+  "packages": [
+    "networkmanager-openvpn",
+    "networkmanager-openconnect"
+  ]
+}

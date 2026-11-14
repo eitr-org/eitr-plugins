@@ -11,11 +11,14 @@ from unittest.mock import Mock, patch
 ROOT = Path(__file__).resolve().parents[1]
 DESKTOP = ROOT.parent / 'eitr'
 sys.path.insert(0, str(DESKTOP / 'distro/lib'))
+sys.path.insert(0, str(ROOT / 'tests'))
+
+from vpn_panel_tests import NetworkManagerVpnStatusTests, PanelRenderTests, WireGuardStatusTests  # noqa: E402,F401
 
 
 def load(identifier, filename='action.py'):
     runtime = types.ModuleType('runtime')
-    for name in ('choose', 'collect', 'launch', 'open_terminal', 'run', 'Step', 'wait_for_escape'):
+    for name in ('choose', 'collect', 'launch', 'open_settings', 'open_terminal', 'run', 'Step', 'wait_for_escape'):
         setattr(runtime, name, Mock())
     runtime.ROOT = Path('/usr/share/eitr')
     folder = ROOT / 'plugins' / identifier
@@ -26,6 +29,106 @@ def load(identifier, filename='action.py'):
             sys.modules.pop(sibling, None)
         spec.loader.exec_module(module)
     return module
+
+
+class VPNTests(unittest.TestCase):
+    def test_iwd_vpn_refuses_every_action(self):
+        for action in ('import', 'up', 'down', 'status'):
+            plugin = load('networkmanager-vpn')
+            plugin.nm_active = Mock(return_value=False)
+            with patch('builtins.print'):
+                plugin.main(action)
+            plugin.run.assert_not_called()
+            plugin.collect.assert_not_called()
+            plugin.open_settings.assert_called_once_with()
+
+    def test_profiles_filter_types_and_use_uuid_with_escaped_names(self):
+        plugin = load('networkmanager-vpn')
+        identifier = '12345678-1234-1234-1234-123456789abc'
+        plugin.run.side_effect = [identifier + ':vpn\nother:ethernet\n', 'Name\\: with spaces\n']
+        self.assertEqual(plugin.profiles(), [('Name\\: with spaces · ' + identifier, identifier)])
+        self.assertEqual(plugin.run.call_args.args[0][-2:], ['uuid', identifier])
+
+    def test_iwd_import_uses_root_importer_and_keeps_keys_off_argv(self):
+        plugin = load('wireguard')
+        with tempfile.TemporaryDirectory() as temporary:
+            filename = Path(temporary) / 'test.conf'
+            content = '[Interface]\nPrivateKey = secret\n[Peer]\nPublicKey = public\n'
+            filename.write_text(content)
+            plugin.collect.return_value = {'file': str(filename)}
+            with patch('builtins.print'), patch.object(plugin, 'record_saved_tunnel'):
+                plugin.import_profile(False)
+        arguments = plugin.run.call_args.args[0]
+        self.assertEqual(arguments, ['sudo', '/usr/lib/eitr/eitr-system', 'vpn-import'])
+        self.assertNotIn('secret', str(arguments))
+        payload = json.loads(plugin.run.call_args.kwargs['input'])
+        self.assertFalse(payload['connect'])
+        self.assertEqual(payload['backend'], 'wg-quick')
+
+    def test_wireguard_executable_hook_refused_before_import(self):
+        plugin = load('wireguard')
+        with tempfile.TemporaryDirectory() as temporary:
+            filename = Path(temporary) / 'test.conf'
+            filename.write_text('[Interface]\nPostUp = malicious\n[Peer]\nPublicKey = public\n')
+            plugin.collect.return_value = {'file': str(filename)}
+            with self.assertRaises(ValueError):
+                plugin.import_profile(False)
+        plugin.run.assert_not_called()
+
+    def test_nm_import_cleans_up_if_disabling_autoconnect_fails(self):
+        plugin = load('networkmanager-vpn')
+        identifier = '12345678-1234-1234-1234-123456789abc'
+        with tempfile.TemporaryDirectory() as temporary:
+            filename = Path(temporary) / 'test.ovpn'
+            filename.write_text('client\n')
+            plugin.collect.return_value = {'file': str(filename)}
+            plugin.run.side_effect = [identifier, RuntimeError('Failed'), '']
+            with self.assertRaises(RuntimeError):
+                plugin.import_profile(True)
+        self.assertIn('--temporary', plugin.run.call_args_list[0].args[0])
+        self.assertEqual(plugin.run.call_args.args[0], ['nmcli', 'connection', 'delete', 'uuid', identifier])
+
+    def test_wg_quick_uses_fixed_absolute_path(self):
+        plugin = load('wireguard')
+        plugin.nm_active = Mock(return_value=False)
+        plugin.collect.return_value = {'name': 'office'}
+        with patch('builtins.print'):
+            plugin.main('up')
+        self.assertEqual(plugin.run.call_args.args[0], ['pkexec', '/usr/bin/wg-quick', 'up', '/etc/wireguard/office.conf'])
+
+    def test_wireguard_panel_actions_and_remove_confirmation(self):
+        plugin = load('wireguard')
+        identifier = '12345678-1234-1234-1234-123456789abc'
+        plugin.nm_active = Mock(return_value=True)
+        plugin.run.side_effect = ['wireguard\n', '', 'wireguard\n', '']
+        plugin.background(['up', identifier])
+        self.assertEqual(plugin.run.call_args_list[1].args[0], ['nmcli', '--wait', '30', 'connection', 'up', 'uuid', identifier])
+        plugin.background(['remove', identifier])
+        self.assertEqual(plugin.run.call_args.args[0], ['nmcli', 'connection', 'delete', 'uuid', identifier])
+        plugin.nm_active = Mock(return_value=False)
+        plugin.run.side_effect = None
+        plugin.run.return_value = ''
+        with patch.object(plugin, 'forget_saved_tunnel') as forget:
+            plugin.background(['remove', 'office'])
+            forget.assert_called_once_with('office')
+        self.assertEqual(plugin.run.call_args.args[0], ['pkexec', '/usr/bin/rm', '-f', '--', '/etc/wireguard/office.conf'])
+        with patch.object(plugin, 'notify'):
+            with self.assertRaises(SystemExit):
+                plugin.background(['up', '../bad'])
+
+    def test_networkmanager_vpn_panel_actions_and_iwd_settings_route(self):
+        plugin = load('networkmanager-vpn')
+        identifier = '12345678-1234-1234-1234-123456789abc'
+        plugin.nm_active = Mock(return_value=True)
+        plugin.run.side_effect = ['vpn\n', '']
+        plugin.background(['up', identifier])
+        self.assertEqual(plugin.run.call_args.args[0], ['nmcli', '--wait', '30', 'connection', 'up', 'uuid', identifier])
+        with patch.object(plugin, 'notify'):
+            with self.assertRaises(SystemExit):
+                plugin.background(['up', 'not-a-uuid'])
+        plugin.nm_active = Mock(return_value=False)
+        plugin.background(['up', identifier])
+        plugin.open_settings.assert_called_once_with()
 
 
 class TailscaleTests(unittest.TestCase):
@@ -206,9 +309,9 @@ class ManifestTests(unittest.TestCase):
     def test_manifests_and_review_snapshot(self):
         import eitr_plugin_manifest
         import eitr_plugin_review
-        # Tailscale's QML panel is larger than the local assistant's 24 KiB context, so its
+        # Plugins with QML panels are larger than the local assistant's 24 KiB context, so their
         # review goes through the Claude transport, as an installer with Claude would.
-        for identifier, transport in (('tailscale', 'claude'),):
+        for identifier, transport in (('wireguard', 'claude'), ('networkmanager-vpn', 'claude'), ('tailscale', 'claude')):
             folder = ROOT / 'plugins' / identifier
             self.assertEqual(eitr_plugin_manifest.manifest(folder)['id'], identifier)
             with tempfile.TemporaryDirectory() as temporary:
@@ -224,22 +327,24 @@ class ManifestTests(unittest.TestCase):
                 result = eitr_plugin_review.check(folder)
                 self.assertIn('Offline review transport verified.', result)
                 self.assertIn('action.py', assistant.call_args.args[0])
-        self.assertEqual(len(eitr_plugin_manifest.repository_plugins(ROOT)), 3)
+        self.assertEqual(len(eitr_plugin_manifest.repository_plugins(ROOT)), 5)
 
-    def test_tailscale_declares_bar_item_panel_and_receiver_service(self):
+    def test_vpn_plugins_declare_bar_items_panels_and_bounded_qml(self):
         import eitr_plugin_manifest
-        manifest = eitr_plugin_manifest.manifest(ROOT / 'plugins/tailscale')
-        self.assertEqual(manifest['schemaVersion'], 2)
-        item, = manifest['ui']['barItems']
-        panel, = manifest['ui']['panels']
-        self.assertEqual(item['panel'], panel['id'])
-        self.assertEqual((panel['surface'], panel['header']), ('panel', False))
-        for entry in (item, panel):
-            self.assertEqual(entry['dataCommand'], {'run': 'status.py', 'arguments': ['--json']})
-            self.assertGreaterEqual(entry['refreshInterval'], 5000)
-        self.assertEqual(manifest['service'], {'run': 'receive.py'})
-        for qml in (ROOT / 'plugins/tailscale').glob('*.qml'):
-            self.assertLessEqual(len(qml.read_text().splitlines()), 400, qml.name)
+        for identifier in ('wireguard', 'networkmanager-vpn', 'tailscale'):
+            manifest = eitr_plugin_manifest.manifest(ROOT / 'plugins' / identifier)
+            self.assertEqual(manifest['schemaVersion'], 2)
+            item, = manifest['ui']['barItems']
+            panel, = manifest['ui']['panels']
+            self.assertEqual(item['panel'], panel['id'])
+            self.assertEqual((panel['surface'], panel['header']), ('panel', False))
+            for entry in (item, panel):
+                self.assertEqual(entry['dataCommand'], {'run': 'status.py', 'arguments': ['--json']})
+                self.assertGreaterEqual(entry['refreshInterval'], 5000)
+            for qml in (ROOT / 'plugins' / identifier).glob('*.qml'):
+                self.assertLessEqual(len(qml.read_text().splitlines()), 400, qml.name)
+        tailscale = eitr_plugin_manifest.manifest(ROOT / 'plugins/tailscale')
+        self.assertEqual(tailscale['service'], {'run': 'receive.py'})
 
 
 if __name__ == '__main__':
