@@ -26,7 +26,7 @@ edit refreshes the panel immediately; the bar and other open hosts receive the c
 No network, packages, credentials, background service or privileged actions.
 Invalid saved preferences produce a visible error rather than being overwritten.
 
-Requires Eitr's clock bar-slot support. The first two placed clock-slot plugins use
+Requires Eitr's clock bar-slot support and `api.controls` (dropdown, button and textField). The first two placed clock-slot plugins use
 that slot; further entries use the status group. Drop hides clock-slot items.
 English only: plugins have no independent translation catalog (the Tailscale plugin
 uses keys from the desktop catalog).
@@ -47,4 +47,5 @@ python3 tools/build_world_clock_data.py /path/to/geonames plugins/world-clock/da
 
 Run repository checks with `bash tools/check.sh`; when the host checkout is not the
 sibling `../eitr`, set `PYTHONPATH=/path/to/eitr/distro/lib`. Render fixtures use
-Quickshell's offscreen platform and temporary configuration directories.
+Quickshell's offscreen platform and temporary configuration directories, with the real host
+controls from `$EITR_CODE_ROOT` (defaults to `~/Development/personal/eitr`).

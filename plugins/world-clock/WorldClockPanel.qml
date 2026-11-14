@@ -1,6 +1,5 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls.Basic
 import Quickshell.Io
 import "WorldClockState.js" as State
 
@@ -16,11 +15,12 @@ Item {
     property string error: ""
     readonly property string runtime: decodeURIComponent(Qt.resolvedUrl("runtime.py").toString().replace(/^file:\/\//, ""))
     property var matches: []
-    property alias searchText: search.text
+    property string searchText: ""
+    onSearchTextChanged: { matches = []; debounce.restart(); }
     function runSearch() {
         if (finder.running) return;
-        if (!search.text.trim()) { matches = []; return; }
-        finder.command = ["python3", runtime, "search", search.text.trim()];
+        if (!panel.searchText.trim()) { matches = []; return; }
+        finder.command = ["python3", runtime, "search", panel.searchText.trim()];
         finder.running = true;
     }
     Timer { id: debounce; interval: 180; onTriggered: panel.runSearch() }
@@ -33,7 +33,7 @@ Item {
             else {
                 try {
                     const result = JSON.parse(found.text);
-                    if (result.query === search.text.trim()) panel.matches = result.matches;
+                    if (result.query === panel.searchText.trim()) panel.matches = result.matches;
                     else debounce.restart();
                 } catch (error) { panel.error = "Could not read search results"; }
             }
@@ -77,7 +77,7 @@ Item {
         stderr: StdioCollector { id: failure }
         onExited: function(exitCode) {
             if (exitCode !== 0) panel.error = failure.text || "Could not save settings";
-            else { panel.savedStatus = State.parse(saved.text); search.text = ""; }
+            else { panel.savedStatus = State.parse(saved.text); panel.searchText = ""; }
         }
     }
 
@@ -119,19 +119,18 @@ Item {
                         width: 24; height: 32; verticalAlignment: Text.AlignVCenter
                         font.pixelSize: 18
                     }
-                    TextField {
-                        width: 92
-                        text: cityRow.modelData.label
-                        maximumLength: 12
-                        color: panel.api.foreground
-                        selectionColor: Qt.alpha(panel.api.accent, 0.35)
-                        selectedTextColor: panel.api.foreground
-                        Accessible.name: "Label for " + cityRow.modelData.zone
-                        font.family: panel.api.fontFamily
-                        font.pixelSize: panel.api.bodySize
-                        selectByMouse: true
-                        background: Rectangle { color: Qt.alpha(panel.api.foreground, 0.04); radius: panel.api.radius; border.color: Qt.alpha(panel.api.foreground, 0.15) }
-                        onEditingFinished: if (text.trim() && text.trim() !== cityRow.modelData.label) panel.changeCity(cityRow.index, "label", text)
+                    Loader {
+                        width: 92; height: 32
+                        sourceComponent: panel.api.controls.textField
+                        onLoaded: {
+                            item.text = Qt.binding(() => cityRow.modelData.label);
+                            item.maximumLength = 12;
+                            item.Accessible.name = "Label for " + cityRow.modelData.zone;
+                            item.editingFinished.connect(() => {
+                                if (item.text.trim() && item.text.trim() !== cityRow.modelData.label)
+                                    panel.changeCity(cityRow.index, "label", item.text);
+                            });
+                        }
                     }
                     Text {
                         text: State.time(cityRow.modelData, panel.api.clockFormat)
@@ -140,9 +139,9 @@ Item {
                         font.family: panel.api.fontFamily
                         font.pixelSize: panel.api.bodySize
                     }
-                    WorldClockButton { api: panel.api; glyph: "↑"; description: "Move up"; enabled: cityRow.index > 0 && !writer.running; onClicked: panel.changeCity(cityRow.index, "up", "") }
-                    WorldClockButton { api: panel.api; glyph: "↓"; description: "Move down"; enabled: panel.status && cityRow.index < panel.status.cities.length - 1 && !writer.running; onClicked: panel.changeCity(cityRow.index, "down", "") }
-                    WorldClockButton { api: panel.api; glyph: "×"; description: "Remove"; enabled: !writer.running; onClicked: panel.changeCity(cityRow.index, "remove", "") }
+                    WorldClockAction { api: panel.api; glyph: "↑"; description: "Move up"; enabled: cityRow.index > 0 && !writer.running; onClicked: panel.changeCity(cityRow.index, "up", "") }
+                    WorldClockAction { api: panel.api; glyph: "↓"; description: "Move down"; enabled: panel.status && cityRow.index < panel.status.cities.length - 1 && !writer.running; onClicked: panel.changeCity(cityRow.index, "down", "") }
+                    WorldClockAction { api: panel.api; glyph: "×"; description: "Remove"; enabled: !writer.running; onClicked: panel.changeCity(cityRow.index, "remove", "") }
                 }
                 Text {
                     width: parent.width
@@ -156,32 +155,34 @@ Item {
                 }
             }
         }
-        Row {
-            spacing: 6
-            Text { text: "Cities on the bar"; height: 32; verticalAlignment: Text.AlignVCenter; color: panel.api.foreground; font.family: panel.api.fontFamily; font.pixelSize: panel.api.bodySize }
-            WorldClockDropdown {
-                objectName: "barCountDropdown"
-                api: panel.api
-                currentIndex: panel.status ? panel.status.barCount - 1 : 0
-                enabled: panel.status !== null && !panel.status.error && !writer.running
-                onActivated: index => { const settings = State.settings(panel.status); settings.barCount = index + 1; panel.save(settings); }
+        Loader {
+            width: parent.width
+            sourceComponent: panel.api.controls.dropdown
+            onLoaded: {
+                item.objectName = "barCountDropdown";
+                item.floatingLabel = "Cities on the bar";
+                item.helperText = "How many clocks show beside the time.";
+                item.choices = Array.from({length: 10}, (unused, index) => ({value: String(index + 1), label: String(index + 1)}));
+                item.current = Qt.binding(() => String(panel.status ? panel.status.barCount : 1));
+                item.available = Qt.binding(() => panel.status !== null && !panel.status.error && !writer.running);
+                item.accessibleName = "Cities on the bar";
+                item.chosen.connect(value => {
+                    const settings = State.settings(panel.status);
+                    settings.barCount = Number(value);
+                    panel.save(settings);
+                });
             }
         }
-        TextField {
-            id: search
-            width: parent.width
-            enabled: panel.status !== null && !panel.status.error
-            placeholderText: "Search city, state, country or time zone"
-            onTextChanged: { panel.matches = []; debounce.restart(); }
-            color: panel.api.foreground
-            placeholderTextColor: Qt.alpha(panel.api.foreground, 0.72)
-            selectionColor: Qt.alpha(panel.api.accent, 0.35)
-            selectedTextColor: panel.api.foreground
-            font.family: panel.api.fontFamily
-            font.pixelSize: panel.api.bodySize
-            selectByMouse: true
-            maximumLength: 100
-            background: Rectangle { color: Qt.alpha(panel.api.foreground, 0.04); radius: panel.api.radius; border.color: Qt.alpha(panel.api.foreground, 0.15) }
+        Loader {
+            width: parent.width; height: 32
+            sourceComponent: panel.api.controls.textField
+            onLoaded: {
+                item.enabled = Qt.binding(() => panel.status !== null && !panel.status.error);
+                item.placeholderText = "Search city, state, country or time zone";
+                item.maximumLength = 100;
+                item.text = Qt.binding(() => panel.searchText);
+                item.textChanged.connect(() => panel.searchText = item.text);
+            }
         }
         Repeater {
             model: panel.matches
@@ -233,7 +234,7 @@ Item {
         }
 
         Text {
-            visible: search.text.trim() !== "" && panel.matches.length === 0
+            visible: panel.searchText.trim() !== "" && panel.matches.length === 0
             text: finder.running || debounce.running ? "Searching…" : "No matching cities or time zones"
             color: panel.api.foreground
             font.family: panel.api.fontFamily
