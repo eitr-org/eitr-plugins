@@ -11,7 +11,7 @@ Loader {
     property bool selected: false
     property int textAlignment: Text.AlignHCenter
     signal clicked()
-    width: icon ? 28 : 80
+    width: icon ? 32 : 80
     height: 32
     HoverHandler { id: hover }
     ToolTip {
@@ -37,7 +37,8 @@ Loader {
     onLoaded: {
         item.text = Qt.binding(() => button.text);
         item.flat = Qt.binding(() => button.icon);
-        item.textInset = Qt.binding(() => button.icon ? 0 : 8);
+        // The button keeps 8 px on the right of its text; the same on the left centres a glyph.
+        item.textInset = 8;
         item.textSize = Qt.binding(() => button.icon ? 16 : 13);
         item.selected = Qt.binding(() => button.selected);
         item.textAlignment = Qt.binding(() => button.textAlignment);

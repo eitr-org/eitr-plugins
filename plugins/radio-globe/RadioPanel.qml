@@ -68,7 +68,7 @@ Item {
             }
             RadioAction {
                 objectName: "globe-toggle"
-                api: panel.api; width: 28; icon: true; text: "◎"
+                api: panel.api; width: 32; icon: true; text: panel.showGlobe ? "\u{F01E7}" : "\u{F01E8}"
                 description: Strings.tr(panel.showGlobe ? "Hide globe" : "Show globe")
                 selected: panel.showGlobe
                 onClicked: panel.showGlobe = !panel.showGlobe
