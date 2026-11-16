@@ -56,7 +56,7 @@ class PhoneRenderTests(unittest.TestCase):
         from PIL import Image
         for theme in ('dark', 'light'):
             with Image.open(output / ('panel-' + theme + '.png')) as panel:
-                self.assertEqual(panel.width, 420)
+                self.assertEqual(panel.width, 380)
                 self.assertGreater(panel.height, 400)
                 self.assertGreater(len(panel.getcolors(panel.width * panel.height)), 10)
 

@@ -42,7 +42,7 @@ ShellRoot {
         implicitWidth: 440; implicitHeight: 1400; visible: true; color: fake.background
         Rectangle {
             id: canvas
-            color: fake.background; width: 420; height: page.implicitHeight + 100
+            color: fake.background; width: 380; height: page.implicitHeight + 100
             Phone.PhonePanel { id: page; api: fake; x: 18; y: 70; width: 384 }
             Rectangle {
                 id: icons

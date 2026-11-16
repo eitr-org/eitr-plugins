@@ -11,7 +11,7 @@ Item {
     property bool busy: false
     readonly property string explanation: supported ? "" : Strings.tr("Not shared by this phone")
     signal clicked()
-    implicitHeight: Math.max(76, content.implicitHeight + 20)
+    implicitHeight: Math.max(58, content.implicitHeight + 14)
     height: implicitHeight
 
     Loader {
@@ -29,16 +29,16 @@ Item {
         id: content
         width: parent.width - 12
         anchors.centerIn: parent
-        spacing: 6
+        spacing: 3
         opacity: tile.supported && !tile.busy ? 1 : 0.45
         PhoneLabel {
             api: tile.api; width: parent.width
-            text: tile.glyph; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 24
+            text: tile.glyph; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 18
             horizontalAlignment: Text.AlignHCenter
         }
         PhoneLabel {
             api: tile.api; width: parent.width
-            text: tile.text
+            text: tile.text; font.pixelSize: tile.api.captionSize
             horizontalAlignment: Text.AlignHCenter
         }
     }

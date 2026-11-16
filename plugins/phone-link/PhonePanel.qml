@@ -17,7 +17,7 @@ Item {
     readonly property string state: status ? status.state : "loading"
     readonly property var connectedDevices: devices.filter(device => device.paired && device.reachable)
     readonly property var otherDevices: devices.filter(device => !device.paired || !device.reachable)
-    implicitWidth: 420
+    implicitWidth: 380
     implicitHeight: body.implicitHeight
 
     function update(line) {

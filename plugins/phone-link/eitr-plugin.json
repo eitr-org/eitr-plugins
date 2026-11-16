@@ -53,7 +53,7 @@
         "refreshInterval": 0,
         "surface": "panel",
         "header": false,
-        "width": 420,
+        "width": 380,
         "maxHeight": 640
       }
     ]

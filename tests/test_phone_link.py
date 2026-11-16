@@ -253,7 +253,7 @@ class PhoneManifestTests(unittest.TestCase):
         item, = manifest['ui']['barItems']
         panel, = manifest['ui']['panels']
         self.assertEqual(item['panel'], panel['id'])
-        self.assertEqual(panel['width'], 420)
+        self.assertEqual(panel['width'], 380)
         self.assertEqual(panel['maxHeight'], 640)
         for entry in (item, panel):
             self.assertEqual(entry['dataStream'], {'run': 'status.py', 'arguments': ['--watch']})

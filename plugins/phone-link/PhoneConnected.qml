@@ -15,22 +15,22 @@ Column {
 
     Rectangle {
         objectName: "connected-header"
-        width: parent.width; height: 84
+        width: parent.width; height: 64
         radius: card.api.radius
         color: Qt.alpha(card.api.foreground, 0.18)
         PhoneLabel {
-            api: card.api; x: 16
+            api: card.api; x: 14
             anchors.verticalCenter: parent.verticalCenter
             text: State.glyph(card.device.type)
-            font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 32
+            font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 24
         }
         Column {
-            x: 64; width: parent.width - x - 16
+            x: 50; width: parent.width - x - 14
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 6
+            spacing: 4
             PhoneLabel {
                 api: card.api; width: parent.width
-                text: card.device.name; font.pixelSize: card.api.headingSize; font.bold: true
+                text: card.device.name; font.pixelSize: card.api.bodySize; font.bold: true
                 wrapMode: Text.NoWrap; elide: Text.ElideRight
             }
             Row {
@@ -58,7 +58,7 @@ Column {
     Grid {
         objectName: "action-grid"
         width: parent.width; columns: 3; spacing: 6
-        readonly property real tileHeight: children.reduce((height, child) => Math.max(height, child.implicitHeight || 0), 76)
+        readonly property real tileHeight: children.reduce((height, child) => Math.max(height, child.implicitHeight || 0), 58)
         Repeater {
             model: [
                 {action: "send", label: "Send files", glyph: "󰈔", plugin: "share"},
