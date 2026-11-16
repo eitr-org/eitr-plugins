@@ -10,6 +10,10 @@
       "path": "plugins/lofi-radio"
     },
     {
+      "id": "radio-globe",
+      "path": "plugins/radio-globe"
+    },
+    {
       "id": "tailscale",
       "path": "plugins/tailscale"
     },

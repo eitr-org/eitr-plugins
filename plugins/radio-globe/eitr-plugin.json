@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 2,
+  "id": "radio-globe",
+  "name": "Radio Globe",
+  "author": "The Eitr project",
+  "version": "0.1.0",
+  "description": "Explore live radio around the world and save favourite stations",
+  "icon": "icon.svg",
+  "rows": [],
+  "packages": ["mpv"],
+  "ui": {
+    "barItems": [
+      {
+        "id": "radio",
+        "title": "Radio Globe",
+        "qml": "RadioBar.qml",
+        "panel": "panel",
+        "dataCommand": {"run": "runtime.py", "arguments": ["status"]},
+        "refreshInterval": 30000
+      }
+    ],
+    "panels": [
+      {
+        "id": "panel",
+        "title": "Radio Globe",
+        "qml": "RadioPanel.qml",
+        "surface": "panel",
+        "header": false
+      }
+    ]
+  }
+}

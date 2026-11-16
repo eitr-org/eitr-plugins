@@ -1,0 +1,151 @@
+import QtQuick
+import Quickshell
+import "components" as Controls
+import "plugin" as Plugin
+import "plugin/GlobeMath.js" as GlobeMath
+import "plugin/Strings.js" as Strings
+
+ShellRoot {
+    id: fixture
+    property string scenario: SCENARIO
+    property bool light: LIGHT
+    function find(item, name) {
+        if (item.objectName === name) return item;
+        for (const child of item.children || []) {
+            const found = find(child, name);
+            if (found) return found;
+        }
+        return null;
+    }
+    QtObject {
+        id: api
+        property color foreground: fixture.light ? "#26373a" : "#e1ecea"
+        property color background: fixture.light ? "#f3f4ed" : "#14262b"
+        property color accent: fixture.light ? "#256e71" : "#83c7c0"
+        property var palette: ({foreground: foreground, color4: accent})
+        property string fontFamily: "JetBrainsMono Nerd Font"
+        property real radius: 4
+        property bool observed: true
+        property string detail: ""
+        property string dataText: '{"ok":true,"playing":{"station":{"name":"Rádio Aurora"}}}'
+        property var controls: ({button: button, textField: textField, dropdown: dropdown})
+        signal themeChanged()
+        function runDataCommand() {}
+    }
+    Component { id: button; Controls.PanelButton { foreground: api.foreground; text: "" } }
+    Component { id: textField; Controls.PanelTextField { foreground: api.foreground; accent: api.accent } }
+    Component { id: dropdown; Controls.ChoiceDropdown { foreground: api.foreground; background: api.background; gold: api.accent } }
+    TextMetrics { id: hintMetrics; font.family: api.fontFamily; font.pixelSize: 11 }
+    FloatingWindow {
+        id: window
+        visible: true
+        implicitWidth: 440
+        implicitHeight: panel.implicitHeight + 80
+        color: api.background
+        Rectangle {
+            id: capture
+            anchors.fill: parent
+            color: api.background
+            Plugin.RadioPanel { id: panel; x: 20; y: 56; width: parent.width - 40; api: api }
+            Rectangle {
+                id: barCapture
+                width: 64; height: 40; x: 20; y: 6
+                color: api.background
+                Plugin.RadioBar { id: bar; anchors.centerIn: parent; api: api }
+            }
+        }
+        Timer {
+            id: sequence
+            property int step: 0
+            property int closedTicks: 0
+            interval: 250; repeat: true; running: true
+            onTriggered: {
+                const state = fixture.find(panel, "radio-backend");
+                if (!state || state.countries.length === 0) return;
+                const retry = fixture.find(panel, "retry");
+                const toggle = fixture.find(panel, "globe-toggle");
+                if (step === 0) {
+                    if (api.detail !== Strings.tr("Now playing") + " · Rádio Aurora") throw new Error("Playing detail missing");
+                    api.dataText = '{"playing":{"station":{"name":"Next station"}}}';
+                    if (api.detail !== Strings.tr("Now playing") + " · Next station") throw new Error("Playing detail stale");
+                    for (const payload of ['{"playing":null}', 'invalid']) {
+                        api.dataText = payload;
+                        if (api.detail !== "") throw new Error("Stopped detail retained");
+                    }
+                    api.dataText = '{"playing":{"station":{"name":"Rádio Aurora"}}}';
+                    for (const child of [...bar.children, ...bar.resources]) {
+                        if (child.toString().indexOf("ToolTip") !== -1) throw new Error("Duplicate bar tooltip");
+                    }
+                    const tip = toggle.resources.find(resource => resource.objectName === "action-tooltip");
+                    if (!tip || tip.text !== Strings.tr("Hide globe")) throw new Error("Globe tooltip missing");
+                    panel.showGlobe = false;
+                    if (tip.text !== Strings.tr("Show globe")) throw new Error("Globe tooltip stale");
+                    panel.showGlobe = true;
+                    toggle.item.forceActiveFocus();
+                    const hint = fixture.find(panel, "globe-hint");
+                    for (const locale of ["en", ...Object.keys(Strings.translations)]) {
+                        hintMetrics.text = Strings.tr("Drag · Scroll to zoom", locale);
+                        if (hintMetrics.advanceWidth > hint.width) throw new Error("Globe hint clipped: " + locale);
+                    }
+                    panel.chooseCountry(state.countries[0]);
+                    const front = GlobeMath.project(0, 0, 0, 0);
+                    const back = GlobeMath.project(180, 0, 0, 0);
+                    if (front[2] !== 1 || back[2] !== -1 || GlobeMath.dotRadius(10) >= GlobeMath.dotRadius(100)) throw new Error("Projection failed");
+                    const targets = [{code:"AA", location:[0,0], count:10}, {code:"ZZ", location:[0,180], count:100}];
+                    if (GlobeMath.hit(targets, 100, 100, 80, 100, 100, 0, 0).code !== "AA"
+                        || GlobeMath.hit(targets, 0, 0, 80, 100, 100, 0, 0) !== null) throw new Error("Country hit test failed");
+                    for (const locale of Object.keys(Strings.translations)) {
+                        if (Strings.translations[locale].length !== Strings.keys.length) throw new Error("Translation gap: " + locale);
+                    }
+                    step++; return;
+                }
+                if (state.busy) return;
+                if (step === 1) {
+                    if (state.stations.length !== 3 || state.favorites.length !== 1 || !state.playing) throw new Error("Backend data missing");
+                    if (!panel.reduceMotion) throw new Error("Reduce motion ignored");
+                    if (retry.visible) throw new Error("Retry visible after success");
+                    state.parse('{"ok":false,"error":"The station player could not start"}');
+                    if (retry.visible) throw new Error("Playback failure shows loading Retry");
+                    state.error = "";
+                    state.search("name", "slow", 0);
+                    state.search("tag", "ambient", 0);
+                    step++; return;
+                }
+                if (step === 2) {
+                    if (state.queryMode !== "tag" || state.stations.length !== 3) throw new Error("Search coalescing failed");
+                    const tip = toggle.resources.find(resource => resource.objectName === "action-tooltip");
+                    if (!tip.visible) throw new Error("Globe tooltip missing on keyboard focus");
+                    panel.forceActiveFocus();
+                    state.search("name", "failure", 0);
+                    step++; return;
+                }
+                if (step === 3) {
+                    if (!retry.visible || !state.error) throw new Error("Retry missing after loading failure");
+                    if (fixture.scenario !== "offline") {
+                        retry.clicked();
+                        state.search("tag", "ambient", 0);
+                        if (retry.visible) throw new Error("Retry retained during recovery");
+                    }
+                    step++; return;
+                }
+                if (step === 4) {
+                    if (fixture.scenario !== "offline" && (retry.visible || state.stations.length !== 3)) throw new Error("Loading recovery failed");
+                    if (fixture.scenario === "favorites") panel.favoritesOnly = true;
+                    if (fixture.scenario === "compact") panel.showGlobe = false;
+                    api.observed = false;
+                    console.log("RADIO_PANEL_CLOSED", Date.now() / 1000);
+                    step++; return;
+                }
+                if (fixture.scenario === "lifecycle" && closedTicks++ < 14) return;
+                capture.grabToImage(result => {
+                    if (!result.saveToFile(OUTPUT)) throw new Error("Capture failed");
+                    barCapture.grabToImage(icon => {
+                        if (!icon.saveToFile(OUTPUT.replace(".png", "-bar.png"))) throw new Error("Bar capture failed");
+                        console.log("RADIO_RENDER_OK"); Qt.quit();
+                    });
+                });
+                sequence.stop();
+            }
+        }
+    }
+}

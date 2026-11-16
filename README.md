@@ -6,6 +6,7 @@ Official plugins for [Eitr](https://github.com/eitr-org/eitr), reviewed by the E
 |---|---|
 | [Visualizer](plugins/visualizer) | A desktop audio visualizer that moves with whatever is playing, in a Wave or Bars style |
 | [Lofi Radio](plugins/lofi-radio) | Lofi music through lowfi, controlled from the bar |
+| [Radio Globe](plugins/radio-globe) | Explore live radio on a globe, search stations and save favourites |
 | [Tailscale](plugins/tailscale) | Tailscale on the bar: connect, see your devices, copy their addresses and send or receive files |
 | [World clock](plugins/world-clock) | Offline city times immediately before the centred bar clock |
 
