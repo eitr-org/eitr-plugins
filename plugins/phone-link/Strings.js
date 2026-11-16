@@ -2,9 +2,10 @@
 
 var languages = ["de", "es", "fr", "ja", "ko", "pt_BR", "zh_CN"];
 var entries = {
+    "Other devices": ["Andere Geräte", "Otros dispositivos", "Autres appareils", "その他の機器", "기타 기기", "Outros dispositivos", "其他设备"],
+    "Ring": ["Klingeln", "Sonar", "Sonner", "鳴らす", "울리기", "Tocar", "响铃"],
+    "Not shared by this phone": ["Von diesem Telefon nicht freigegeben", "Este teléfono no lo comparte", "Non partagé par ce téléphone", "このスマートフォンでは共有されていません", "이 휴대폰에서 공유하지 않음", "Não compartilhado por este telefone", "此手机未共享"],
     "Done.": ["Fertig.", "Listo.", "Terminé.", "完了。", "완료.", "Concluído.", "完成。"],
-    "Actions": ["Aktionen", "Acciones", "Actions", "操作", "작업", "Ações", "操作"],
-    "Hide actions": ["Aktionen ausblenden", "Ocultar acciones", "Masquer les actions", "操作を隠す", "작업 숨기기", "Ocultar ações", "隐藏操作"],
     "Connected": ["Verbunden", "Conectado", "Connecté", "接続済み", "연결됨", "Conectado", "已连接"],
     "Charging": ["Wird geladen", "Cargando", "En charge", "充電中", "충전 중", "Carregando", "充电中"],
     "On battery": ["Akkubetrieb", "Con batería", "Sur batterie", "バッテリー使用中", "배터리 사용 중", "Na bateria", "使用电池"],
@@ -19,10 +20,8 @@ var entries = {
     "Unpair": ["Entkoppeln", "Desvincular", "Dissocier", "ペアリング解除", "페어링 해제", "Desparear", "取消配对"],
     "Send files": ["Dateien senden", "Enviar archivos", "Envoyer des fichiers", "ファイルを送信", "파일 보내기", "Enviar arquivos", "发送文件"],
     "Send clipboard": ["Zwischenablage senden", "Enviar portapapeles", "Envoyer le presse-papiers", "クリップボードを送信", "클립보드 보내기", "Enviar área de transferência", "发送剪贴板"],
-    "Ring my phone": ["Telefon klingeln lassen", "Hacer sonar mi teléfono", "Faire sonner mon téléphone", "スマートフォンを鳴らす", "내 휴대폰 울리기", "Tocar meu telefone", "响铃查找手机"],
     "Ping": ["Ping", "Ping", "Ping", "Ping", "핑", "Ping", "Ping"],
     "Browse files": ["Dateien durchsuchen", "Explorar archivos", "Parcourir les fichiers", "ファイルを閲覧", "파일 찾아보기", "Explorar arquivos", "浏览文件"],
-    "Disabled actions are not shared by this phone.": ["Deaktivierte Aktionen werden von diesem Telefon nicht freigegeben.", "Este teléfono no comparte las acciones desactivadas.", "Ce téléphone ne partage pas les actions désactivées.", "無効な操作は、このスマートフォンで共有されていません。", "비활성화된 작업은 이 휴대폰에서 공유되지 않습니다.", "As ações desativadas não são compartilhadas por este telefone.", "此手机未共享已禁用的操作。"],
     "Unpair this device? You will need to pair it again to reconnect.": ["Dieses Gerät entkoppeln? Zum erneuten Verbinden müssen Sie es wieder koppeln.", "¿Desvincular este dispositivo? Tendrás que vincularlo de nuevo para reconectarlo.", "Dissocier cet appareil ? Vous devrez l’associer à nouveau pour le reconnecter.", "この機器のペアリングを解除しますか？再接続には再度ペアリングが必要です。", "이 기기의 페어링을 해제할까요? 다시 연결하려면 페어링해야 합니다.", "Desparear este dispositivo? Será necessário pareá-lo novamente para reconectar.", "取消此设备的配对？重新连接时需要再次配对。"],
     "Confirm unpair": ["Entkoppeln bestätigen", "Confirmar desvinculación", "Confirmer la dissociation", "解除を確認", "해제 확인", "Confirmar despareamento", "确认取消配对"],
     "Cancel": ["Abbrechen", "Cancelar", "Annuler", "キャンセル", "취소", "Cancelar", "取消"],

@@ -52,7 +52,9 @@
         },
         "refreshInterval": 0,
         "surface": "panel",
-        "header": false
+        "header": false,
+        "width": 420,
+        "maxHeight": 640
       }
     ]
   }

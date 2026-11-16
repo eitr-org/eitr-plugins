@@ -49,7 +49,12 @@ locale = "de_DE";
 assert.equal(strings.tr("Pair"), "Koppeln");
 locale = "pt_BR";
 assert.equal(strings.tr("Send files"), "Enviar arquivos");
-assert.equal(strings.tr("Hide actions"), "Ocultar ações");
+assert.equal(strings.tr("Other devices"), "Outros dispositivos");
+assert.equal(strings.tr("Ring"), "Tocar");
+assert.equal(strings.tr("Not shared by this phone"), "Não compartilhado por este telefone");
+for (const stale of ["Actions", "Hide actions", "Ring my phone", "Disabled actions are not shared by this phone."]) {
+    assert.ok(!Object.hasOwn(strings.entries, stale));
+}
 assert.equal(strings.tr("Eitr's firewall already lets KDE Connect through on your local network."),
     "O firewall do Eitr já permite o KDE Connect na sua rede local.");
 assert.ok(!Object.hasOwn(strings.entries, "Hide"));
@@ -58,7 +63,7 @@ console.log(JSON.stringify({labels:Object.keys(strings.entries).length,languages
 '''
         result = subprocess.run(['node', '-e', script, str(PLUGIN)], text=True, capture_output=True, timeout=5)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(json.loads(result.stdout), {'labels': 38, 'languages': 7})
+        self.assertEqual(json.loads(result.stdout), {'labels': 37, 'languages': 7})
 
 
 if __name__ == '__main__':

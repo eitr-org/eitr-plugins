@@ -15,7 +15,9 @@ Item {
     readonly property string actionScript: decodeURIComponent(Qt.resolvedUrl("action.py").toString().replace(/^file:\/\//, ""))
     readonly property var devices: status ? status.devices : []
     readonly property string state: status ? status.state : "loading"
-    implicitWidth: 364
+    readonly property var connectedDevices: devices.filter(device => device.paired && device.reachable)
+    readonly property var otherDevices: devices.filter(device => !device.paired || !device.reachable)
+    implicitWidth: 420
     implicitHeight: body.implicitHeight
 
     function update(line) {
@@ -64,16 +66,18 @@ Item {
         width: parent.width; spacing: 12
         PhoneLabel {
             api: panel.api; width: parent.width
-            text: "Phone Link"; font.pixelSize: 16; font.bold: true
+            text: "Phone Link"; font.pixelSize: panel.api.headingSize; font.bold: true
         }
         PhoneLabel {
             api: panel.api; width: parent.width
+            objectName: "setup-help"
+            visible: panel.connectedDevices.length === 0
             text: Strings.tr(panel.state === "loading" ? "Checking KDE Connect…"
                 : panel.state === "missing" ? "Install KDE Connect through the plugin's package review."
                 : panel.state === "stopped" ? "KDE Connect is not running. Start it to discover phones on your local network."
                 : panel.state === "unavailable" ? "KDE Connect is not answering. Check the session D-Bus and try again."
                 : "Open KDE Connect on your phone and join the same local network.")
-            font.pixelSize: 12; opacity: 0.72
+            font.pixelSize: panel.api.captionSize; opacity: 0.72
         }
         PhoneButton {
             api: panel.api
@@ -87,9 +91,29 @@ Item {
             text: Strings.tr("No devices found. Keep the phone app open for discovery.")
         }
         Column {
-            width: parent.width; spacing: 6
+            width: parent.width; spacing: 16
             Repeater {
-                model: panel.devices
+                model: panel.connectedDevices
+                PhoneConnected {
+                    required property var modelData
+                    api: panel.api; device: modelData
+                    busy: command.running
+                    onActionRequested: function(action, identifier, data) { panel.run(action, identifier, data); }
+                }
+            }
+        }
+        Column {
+            objectName: "other-devices"
+            width: parent.width; spacing: 6
+            visible: panel.otherDevices.length > 0
+            Rectangle { width: parent.width; height: 1; color: Qt.alpha(panel.api.foreground, 0.12) }
+            Item { width: 1; height: 6 }
+            PhoneLabel {
+                api: panel.api; width: parent.width
+                text: Strings.tr("Other devices"); font.pixelSize: panel.api.captionSize; opacity: 0.72
+            }
+            Repeater {
+                model: panel.otherDevices
                 PhoneDevice {
                     required property var modelData
                     api: panel.api; device: modelData
@@ -102,19 +126,20 @@ Item {
             api: panel.api; width: parent.width
             visible: panel.status !== null && (panel.status.partial || panel.status.total > panel.devices.length)
             text: Strings.tr("Some devices could not be shown. Open KDE Connect for the complete list.")
-            font.pixelSize: 11; opacity: 0.72
+            font.pixelSize: panel.api.captionSize; opacity: 0.72
         }
         PhoneLabel {
             api: panel.api; width: parent.width
             visible: command.running || panel.feedback !== ""
             text: command.running ? Strings.tr(panel.currentAction === "send" ? "Choose files in the desktop dialog…" : "Working…") : panel.feedback
-            font.pixelSize: 12
+            font.pixelSize: panel.api.captionSize
         }
-        Rectangle { width: parent.width; height: 1; color: Qt.alpha(panel.api.foreground, 0.12) }
         PhoneLabel {
+            objectName: "firewall-help"
             api: panel.api; width: parent.width
+            visible: panel.connectedDevices.length === 0 && (panel.state !== "ready" || panel.devices.length === 0)
             text: Strings.tr("Eitr's firewall already lets KDE Connect through on your local network.")
-            font.pixelSize: 11; opacity: 0.72
+            font.pixelSize: panel.api.captionSize; opacity: 0.72
         }
     }
 }

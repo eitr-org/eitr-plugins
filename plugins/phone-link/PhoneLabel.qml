@@ -4,7 +4,7 @@ Text {
     required property var api
     color: api.foreground
     font.family: api.fontFamily
-    font.pixelSize: 13
+    font.pixelSize: api.bodySize
     textFormat: Text.PlainText
     wrapMode: Text.Wrap
 }

@@ -17,25 +17,33 @@ and battery when known, for example **Phone · 80%**. Eitr supplies the themed
 tooltip **Phone Link · Phone · 80%**, or **Phone Link · No phone connected**
 when no paired device is reachable.
 
-The panel lists connected devices, paired offline devices, and discovered phones
-with **Pair**. Connected rows show battery percentage and charging state when the
-phone provides them. **Actions** expands a paired device; **Hide actions** collapses
-its action buttons while keeping the device row visible. Incoming pairing requests
-show **Accept / Reject**, with the verification key when KDE Connect provides it;
-compare it on both devices. **Unpair** requires a separate **Confirm unpair** step.
+Each connected device has a card with its name, battery bar and percentage,
+and charging state. Its five actions stay visible in equal tiles in a three-column,
+two-row grid; the sixth slot is empty. **Unpair** is a quiet text action below the
+tiles and requires a separate **Confirm unpair** step. Offline and available phones
+appear as compact rows under **Other devices**, with **Pair** or **Unpair** as
+appropriate. Incoming requests show **Accept / Reject** and the verification key
+when KDE Connect provides it; compare the code on both devices. Outgoing requests
+also keep their code visible while waiting.
+
+The panel requests a 420 px width and a 640 px maximum content height before the
+host scrolls. Headings, body text, captions and corner preference come from Eitr's
+shared panel roles and controls, in both light and dark themes.
 
 - **Send files** opens the desktop portal file chooser, with multiple selection.
   Cancellation sends nothing. Local file URIs preserve spaces and leading dashes.
 - **Send clipboard** explicitly shares the current desktop clipboard as text.
   It uses the same D-Bus operation as `kdeconnect-cli --share-text`, keeping the
   text out of process arguments and logs. Empty or oversized text is refused.
-- **Ring my phone** asks the phone to ring through KDE Connect's Find My Phone.
+- **Ring** asks the phone to ring through KDE Connect's Find My Phone.
 - **Ping** sends a KDE Connect ping, not an ICMP network test.
 - **Browse files** asks KDE Connect to mount the phone's shared SFTP storage and
   opens the mount in the default file manager. The phone must share storage and
   grant the relevant permissions. A failed mount opens nothing.
 
-Unavailable features are disabled according to the device's loaded plugins.
+Unavailable tiles are dimmed according to the device's loaded plugins. Hover a
+disabled tile for **Not shared by this phone**; the same explanation is available
+to accessibility tools.
 Android and iOS support different features and background behavior; this plugin
 cannot add capabilities the phone app does not expose. Unknown batteries remain
 unknown. Keep the phone app open if discovery is unreliable.
@@ -83,9 +91,10 @@ tcp dport 1714-1764 accept
 udp dport 1714-1764 accept
 ```
 
-The panel explains that Eitr's firewall already lets KDE Connect through on your
-local network. This plugin never edits or reloads the firewall. If you maintain
-a different firewall, allow TCP **and** UDP 1714–1764
+The panel shows local-network setup guidance only when no device is connected.
+The firewall note appears only during setup or when there are no devices. This
+plugin never edits or reloads the firewall. If you maintain a different firewall,
+allow TCP **and** UDP 1714–1764
 from your trusted local network. Guest Wi-Fi/client isolation can still prevent
 discovery even when the computer's firewall allows those ports.
 
@@ -101,7 +110,9 @@ ignore bar-item detail display only **Phone Link**.
 
 Run `bash tools/check.sh` in the repository. Backend tests mock commands and Gio;
 the private-bus fixture uses `dbus-run-session` when local socket binding is allowed.
-Offscreen tests load Eitr's real shared buttons with inert data in both themes.
+Offscreen tests load Eitr's real shared buttons with inert data in both themes,
+including a Galaxy S23 Ultra at 44% on battery, pairing requests, unavailable
+actions, multiple connected devices and unknown batteries.
 They never contact the real session bus or perform a device action. Real Android
 and iPhone pairing, file transfers, permissions and SFTP mounts still need hardware
 verification.
