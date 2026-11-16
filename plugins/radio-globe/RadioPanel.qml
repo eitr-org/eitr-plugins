@@ -54,7 +54,7 @@ Item {
         Row {
             width: parent.width; spacing: 6
             Text {
-                width: parent.width - 150 - (retry.visible ? retry.width + 6 : 0); height: 32
+                width: parent.width - favourites.width - globeToggle.width - 12 - (retry.visible ? retry.width + 6 : 0); height: 32
                 verticalAlignment: Text.AlignVCenter
                 text: Strings.tr("Radio Globe")
                 color: panel.api.foreground
@@ -62,11 +62,13 @@ Item {
                 font.pixelSize: 16; font.bold: true
             }
             RadioAction {
+                id: favourites
                 api: panel.api; width: 110
                 text: Strings.tr("Favourites"); selected: panel.favoritesOnly
                 onClicked: { panel.favoritesOnly = !panel.favoritesOnly; if (!panel.favoritesOnly) panel.runSearch(); }
             }
             RadioAction {
+                id: globeToggle
                 objectName: "globe-toggle"
                 api: panel.api; width: 32; icon: true; text: panel.showGlobe ? "\u{F01E7}" : "\u{F01E8}"
                 description: Strings.tr(panel.showGlobe ? "Hide globe" : "Show globe")
