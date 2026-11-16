@@ -20,7 +20,7 @@ Item {
     readonly property real radius: Math.min(width, height) * 0.43 * zoom
     signal chosen(var country)
     // Turns the globe so a chosen country faces the viewer, the short way round.
-    function focus(country) {
+    function faceCountry(country) {
         if (!country || !country.location) return;
         interacted = true;
         const latitudeTarget = Math.max(-75, Math.min(75, country.location[0]));

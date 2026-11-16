@@ -33,7 +33,7 @@ Item {
     }
     function chooseCountry(country) {
         countryCode = country.code; countryName = country.name;
-        globe.focus(country);
+        globe.faceCountry(country);
         favoritesOnly = false;
         searchText = "";
         if (search.item) search.item.text = "";
