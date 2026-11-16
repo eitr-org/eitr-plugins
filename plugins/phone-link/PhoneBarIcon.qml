@@ -26,6 +26,6 @@ Item {
         text: "\u{F011C}"
         color: icon.api.foreground
         opacity: icon.phone ? 1 : 0.4
-        font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 18
+        font.family: icon.api.fontFamily; font.pixelSize: 15
     }
 }
