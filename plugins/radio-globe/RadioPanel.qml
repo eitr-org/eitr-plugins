@@ -33,6 +33,7 @@ Item {
     }
     function chooseCountry(country) {
         countryCode = country.code; countryName = country.name;
+        globe.focus(country);
         favoritesOnly = false;
         searchText = "";
         if (search.item) search.item.text = "";
@@ -108,6 +109,7 @@ Item {
             width: parent.width; height: Math.max(340, stationColumn.implicitHeight)
             spacing: panel.showGlobe ? 12 : 0
             RadioGlobe {
+                id: globe
                 api: panel.api
                 width: panel.showGlobe ? Math.floor(explorer.width * 0.5) : 0
                 height: explorer.height

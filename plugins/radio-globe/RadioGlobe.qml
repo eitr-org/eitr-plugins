@@ -19,6 +19,24 @@ Item {
     readonly property color accent: api.palette.color4 || api.accent
     readonly property real radius: Math.min(width, height) * 0.43 * zoom
     signal chosen(var country)
+    // Turns the globe so a chosen country faces the viewer, the short way round.
+    function focus(country) {
+        if (!country || !country.location) return;
+        interacted = true;
+        const latitudeTarget = Math.max(-75, Math.min(75, country.location[0]));
+        let longitudeTarget = country.location[1];
+        while (longitudeTarget - longitude > 180) longitudeTarget -= 360;
+        while (longitudeTarget - longitude < -180) longitudeTarget += 360;
+        turn.stop();
+        if (reduceMotion) { longitude = longitudeTarget; latitude = latitudeTarget; return; }
+        turnLongitude.to = longitudeTarget; turnLatitude.to = latitudeTarget;
+        turn.start();
+    }
+    ParallelAnimation {
+        id: turn
+        NumberAnimation { id: turnLongitude; target: globe; property: "longitude"; duration: 700; easing.type: Easing.InOutCubic }
+        NumberAnimation { id: turnLatitude; target: globe; property: "latitude"; duration: 700; easing.type: Easing.InOutCubic }
+    }
     implicitWidth: 300
     implicitHeight: 340
     onLongitudeChanged: canvas.requestPaint()
@@ -120,6 +138,7 @@ Item {
         property real distance: 0
         cursorShape: pressed ? Qt.ClosedHandCursor : globe.hovered ? Qt.PointingHandCursor : Qt.OpenHandCursor
         onPressed: mouse => {
+            turn.stop();
             globe.interacted = true;
             previousX = mouse.x; previousY = mouse.y; distance = 0;
         }
