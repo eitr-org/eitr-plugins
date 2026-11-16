@@ -1,8 +1,10 @@
 """Control only the mpv instance on Radio Globe's private Unix socket."""
 import json
+import os
 import shutil
 import socket
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -69,9 +71,6 @@ def stop():
     (folder('RUNTIME') / 'playing.json').unlink(missing_ok=True)
 
 
-MPRIS_SCRIPTS = ('/usr/lib/mpv-mpris/mpris.so', '/usr/share/mpv/scripts/mpris.so', '/etc/mpv/scripts/mpris.so')
-
-
 def play(record):
     cleaned = station(record)
     if cleaned is None:
@@ -81,11 +80,7 @@ def play(record):
         raise RuntimeError('Install the official mpv package to play stations')
     stop()
     path = folder('RUNTIME') / 'mpv.sock'
-    # The official mpv-mpris add-on makes the station visible to the bar's media controls;
-    # it is the only script loaded, and the station's name is its title.
-    mpris = next((candidate for candidate in MPRIS_SCRIPTS if Path(candidate).is_file()), None)
     arguments = [executable, '--no-config', '--load-scripts=no', '--ytdl=no', '--no-video',
-                 *(['--script=' + mpris] if mpris else []), '--force-media-title=' + cleaned['name'],
                  '--audio-display=no', '--no-terminal', '--idle=no', '--network-timeout=8',
                  '--input-default-bindings=no', '--input-vo-keyboard=no',
                  '--user-agent=' + AGENT, '--volume=100', '--audio-client-name=Radio Globe',
@@ -99,6 +94,10 @@ def play(record):
         if not path.exists() or process.poll() is not None:
             raise RuntimeError('The station player could not start')
         write(folder('RUNTIME') / 'playing.json', cleaned)
+        # The station in the desktop's media controls, as a live stream that offers Stop alone.
+        subprocess.Popen([sys.executable, str(Path(__file__).with_name('media.py')), str(path), cleaned['name']],
+                         start_new_session=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1'))
     except BaseException:
         if process.poll() is None:
             process.terminate()

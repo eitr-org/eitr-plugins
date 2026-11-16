@@ -210,7 +210,6 @@ Item {
                 onClicked: backend.search(backend.queryMode, backend.queryValue, backend.offset + 50)
             }
         }
-        NowPlaying { width: parent.width; api: panel.api; backend: backend }
         Text {
             width: parent.width
             text: Strings.tr("Station lists: Radio Browser. Streams: each station.")

@@ -9,7 +9,7 @@
   "rows": [],
   "packages": [
     "mpv",
-    "mpv-mpris"
+    "python-gobject"
   ],
   "ui": {
     "barItems": [

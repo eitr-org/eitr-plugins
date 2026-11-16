@@ -1,8 +1,10 @@
 # Radio Globe
 
 Explore live radio on an orthographic globe, search for stations, save favourites
-and listen through mpv. The manifest requests the official Arch `mpv` and `mpv-mpris`
-packages; the second shows the playing station in the bar's media controls. Installation uses Eitr's normal package review; the plugin does not
+and listen through mpv. The manifest requests the official Arch `mpv` and `python-gobject`
+packages. `media.py` puts the playing station in the desktop's media controls as a live
+stream: Stop only, no pause, seeking or length, and the song the station announces as the
+title with the station as the artist. Volume is Eitr's own, where the stream is named Radio Globe. Installation uses Eitr's normal package review; the plugin does not
 install packages or start a login service itself.
 
 ## Controls
@@ -21,7 +23,7 @@ install packages or start a login service itself.
   **Favourites** shows saved stations, including when offline. Search filters
   favourites locally. The ◎ button hides the globe to give the list more room;
   its **Hide globe** / **Show globe** tooltip appears on hover or keyboard focus.
-- **Stop** ends this player's stream. Closing the panel keeps audio playing.
+- **Stop** is in the desktop's media controls (the bar and the Media panel). Closing the panel keeps audio playing.
   Reopening it restores current local player state. Adjust the **Radio Globe**
   stream in Eitr's Volume panel.
 
@@ -68,7 +70,7 @@ playing stream.
   or remembered PIDs are signalled.
 
 Config and cache paths fall back to `~/.config` and `~/.cache`. Playback requires
-`XDG_RUNTIME_DIR`. mpv disables user configuration, scripts other than mpv-mpris, video and yt-dlp,
+`XDG_RUNTIME_DIR`. mpv disables user configuration, scripts, video and yt-dlp,
 receives the stream as one argument after `--`, and has an eight-second network
 timeout. Playback ends when the stream ends. The plugin reports local playback
 state while the panel is open; it performs no station/API polling while closed.

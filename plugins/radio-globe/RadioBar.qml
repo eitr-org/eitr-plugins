@@ -21,7 +21,7 @@ Item {
     // The same 15 px glyph size as Eitr's own status icons.
     Text {
         anchors.centerIn: parent
-        text: "\u{F01E7}"
+        text: "\u{F0439}"
         color: bar.api.foreground
         font.family: bar.api.fontFamily; font.pixelSize: 15
     }

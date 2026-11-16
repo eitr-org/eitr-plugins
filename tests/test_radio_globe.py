@@ -201,15 +201,18 @@ class RadioTests(unittest.TestCase):
              patch.object(Path, 'exists', return_value=True), patch.object(Path, 'is_file', return_value=True):
             self.assertEqual(self.player.play(record), {'station': self.browser.station(record)})
         stop.assert_called_once()
-        argv = launch.call_args.args[0]
+        argv = launch.call_args_list[0].args[0]
         self.assertEqual(argv[-2:], ['--', record['url']])
         self.assertIn('--no-config', argv)
         self.assertIn('--load-scripts=no', argv)
         self.assertIn('--volume=100', argv)
         self.assertIn('--audio-client-name=Radio Globe', argv)
-        self.assertIn('--force-media-title=' + self.browser.station(record)['name'], argv)
-        self.assertIn('--script=' + self.player.MPRIS_SCRIPTS[0], argv)
-        self.assertNotIn('shell', launch.call_args.kwargs)
+        self.assertFalse(any(argument.startswith('--script') for argument in argv))
+        bridge = launch.call_args_list[1].args[0]
+        self.assertTrue(bridge[1].endswith('/radio-globe/media.py'))
+        self.assertEqual(bridge[3], self.browser.station(record)['name'])
+        for call in launch.call_args_list:
+            self.assertNotIn('shell', call.kwargs)
 
     def test_missing_player_fails_explicitly(self):
         with patch.object(self.player.shutil, 'which', return_value=None), self.assertRaisesRegex(RuntimeError, 'mpv'):
@@ -242,7 +245,7 @@ class RadioTests(unittest.TestCase):
             import eitr_plugin_manifest
             import eitr_plugin_review
             manifest = eitr_plugin_manifest.manifest(PLUGIN)
-            self.assertEqual(manifest['packages'], ['mpv', 'mpv-mpris'])
+            self.assertEqual(manifest['packages'], ['mpv', 'python-gobject'])
             self.assertNotIn('service', manifest)
             self.assertEqual(manifest['ui']['barItems'][0]['refreshInterval'], 30000)
             records = eitr_plugin_review.snapshot(PLUGIN, Path(self.temporary.name) / 'review')
