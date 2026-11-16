@@ -18,28 +18,18 @@ Item {
         target: bar.api
         function onDataTextChanged() { bar.update(); }
     }
-    Canvas {
-        id: glyph
-        width: 20; height: 20
+    // The same 15 px glyph size as Eitr's own status icons.
+    Text {
         anchors.centerIn: parent
-        onPaint: {
-            const context = getContext("2d");
-            context.reset();
-            context.strokeStyle = bar.api.foreground;
-            context.lineWidth = 1.4;
-            context.beginPath(); context.arc(10, 10, 8, 0, Math.PI * 2); context.stroke();
-            context.beginPath(); context.ellipse(6, 2, 8, 16); context.stroke();
-            context.beginPath(); context.moveTo(2, 10); context.lineTo(18, 10); context.stroke();
-            if (bar.stationName) {
-                context.fillStyle = bar.api.accent;
-                context.beginPath(); context.arc(16.5, 16.5, 3, 0, Math.PI * 2); context.fill();
-            }
-        }
+        text: "\u{F01E7}"
+        color: bar.api.foreground
+        font.family: bar.api.fontFamily; font.pixelSize: 15
     }
-    onStationNameChanged: glyph.requestPaint()
-    Connections {
-        target: bar.api
-        function onThemeChanged() { glyph.requestPaint(); }
+    Rectangle {
+        anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 3
+        width: 6; height: 6; radius: 3
+        visible: bar.stationName !== ""
+        color: bar.api.accent
     }
     HoverHandler {
         id: hover
