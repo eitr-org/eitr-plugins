@@ -57,7 +57,7 @@ print(json.dumps({'ok': True, **result}))
     stations = [station, {**station, 'stationuuid': 'second', 'name': 'World Jazz · São Paulo', 'tags': 'jazz, soul', 'codec': 'AAC', 'bitrate': 192},
                 {**station, 'stationuuid': 'third', 'name': '<Live> Música sem fronteiras', 'tags': 'world, brasil', 'codec': 'OGG', 'bitrate': 96}]
     (folder / 'plugin/fixture.json').write_text(json.dumps(dict(countries=countries, stations=stations,
-         state=dict(playing=dict(station=station, volume=60), volume=60, favorites=[station]))))
+         state=dict(playing=dict(station=station), favorites=[station]))))
     settings = folder / 'quickshell/desktop-bar'
     settings.mkdir(parents=True)
     (settings / 'bar-settings.json').write_text('{"reduceMotion":"yes"}')

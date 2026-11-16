@@ -7,7 +7,10 @@
   "description": "Explore live radio around the world and save favourite stations",
   "icon": "icon.svg",
   "rows": [],
-  "packages": ["mpv"],
+  "packages": [
+    "mpv",
+    "mpv-mpris"
+  ],
   "ui": {
     "barItems": [
       {
@@ -15,7 +18,12 @@
         "title": "Radio Globe",
         "qml": "RadioBar.qml",
         "panel": "panel",
-        "dataCommand": {"run": "runtime.py", "arguments": ["status"]},
+        "dataCommand": {
+          "run": "runtime.py",
+          "arguments": [
+            "status"
+          ]
+        },
         "refreshInterval": 30000
       }
     ],
@@ -25,7 +33,9 @@
         "title": "Radio Globe",
         "qml": "RadioPanel.qml",
         "surface": "panel",
-        "header": false
+        "header": false,
+        "width": 600,
+        "maxHeight": 620
       }
     ]
   }

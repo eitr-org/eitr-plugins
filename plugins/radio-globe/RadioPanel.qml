@@ -17,7 +17,7 @@ Item {
     property bool reduceMotion: true
     readonly property var displayed: favoritesOnly ? backend.favorites.filter(station =>
         !searchText.trim() || (searchMode === "tag" ? station.tags : station.name).toLowerCase().indexOf(searchText.trim().toLowerCase()) !== -1) : backend.stations
-    implicitWidth: 400
+    implicitWidth: 600
     implicitHeight: body.implicitHeight
     RadioBackend { id: backend; api: panel.api }
     FileView {
@@ -105,11 +105,11 @@ Item {
         }
         Row {
             id: explorer
-            width: parent.width; height: Math.max(224, stationColumn.implicitHeight)
+            width: parent.width; height: Math.max(340, stationColumn.implicitHeight)
             spacing: panel.showGlobe ? 12 : 0
             RadioGlobe {
                 api: panel.api
-                width: panel.showGlobe ? Math.floor(explorer.width * 0.44) : 0
+                width: panel.showGlobe ? Math.floor(explorer.width * 0.5) : 0
                 height: explorer.height
                 visible: panel.showGlobe
                 countries: backend.countries
@@ -118,7 +118,7 @@ Item {
             }
             Column {
                 id: stationColumn
-                width: panel.showGlobe ? explorer.width - Math.floor(explorer.width * 0.44) - 12 : explorer.width
+                width: panel.showGlobe ? explorer.width - Math.floor(explorer.width * 0.5) - 12 : explorer.width
                 spacing: 4
                 Loader {
                     width: parent.width
@@ -149,7 +149,7 @@ Item {
                 ListView {
                     id: list
                     width: parent.width
-                    height: 128
+                    height: 236
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
                     model: panel.displayed

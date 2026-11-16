@@ -11,7 +11,6 @@ Item {
     property var stations: []
     property var favorites: []
     property var playing: null
-    property int volume: 60
     property bool stale: false
     property bool more: false
     property string error: ""
@@ -37,7 +36,6 @@ Item {
         if (!result) return;
         favorites = result.favorites || [];
         playing = result.playing || null;
-        volume = result.volume === undefined ? volume : result.volume;
     }
     function activate() {
         if (!api.observed) {
@@ -72,7 +70,7 @@ Item {
         if (writer.running) return;
         error = "";
         writer.payload = command === "play" || command === "favorite" ? JSON.stringify(value) : "";
-        writer.command = ["python3", script, command].concat(command === "volume" ? [String(value)] : []);
+        writer.command = ["python3", script, command];
         writer.stdinEnabled = true;
         writer.running = true;
     }

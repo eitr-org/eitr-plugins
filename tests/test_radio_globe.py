@@ -110,11 +110,11 @@ class RadioTests(unittest.TestCase):
         connection = Mock()
         connection.__enter__ = Mock(return_value=connection)
         connection.__exit__ = Mock(return_value=False)
-        connection.recv.side_effect = [b'{"event":"start-file"}\n', b'{"request_id":1,"error":"success","data":45}\n']
+        connection.recv.side_effect = [b'{"event":"start-file"}\n', b'{"request_id":1,"error":"success","data":1234}\n']
         with patch.object(self.player.socket, 'socket', return_value=connection):
-            self.assertEqual(self.player.ipc(['get_property', 'volume']), 45)
+            self.assertEqual(self.player.ipc(['get_property', 'pid']), 1234)
         payload = json.loads(connection.sendall.call_args.args[0])
-        self.assertEqual(payload, {'command': ['get_property', 'volume'], 'request_id': 1})
+        self.assertEqual(payload, {'command': ['get_property', 'pid'], 'request_id': 1})
         self.assertTrue(connection.connect.call_args.args[0].endswith('/radio-globe/mpv.sock'))
 
     def test_only_private_player_socket_is_stopped(self):
@@ -155,16 +155,34 @@ class RadioTests(unittest.TestCase):
         with patch.object(self.browser, 'request', return_value=[sample()] * 50):
             self.assertTrue(self.browser.stations('name', 'radio')['more'])
 
-    def test_favorites_are_atomic_uuid_toggles_and_volume_is_retained(self):
-        with patch.object(self.player, 'status', return_value=None), patch.object(self.player, 'set_volume') as set_volume:
-            self.runtime.action('volume', 35)
+    def test_favorites_are_atomic_uuid_toggles(self):
+        with patch.object(self.player, 'status', return_value=None):
             added = self.runtime.action('favorite', sample())
-            self.assertEqual(added['volume'], 35)
             self.assertEqual(added['favorites'][0]['stationuuid'], 'station-1')
             self.assertEqual(self.runtime.action('favorite', sample())['favorites'], [])
-            set_volume.assert_called_once_with(35)
         self.assertEqual(list(self.storage.folder('CONFIG').glob('.radio-*')), [])
         self.assertEqual((self.storage.folder('CONFIG') / 'settings.json').stat().st_mode & 0o777, 0o600)
+
+    def test_legacy_volume_is_ignored_and_not_saved_again(self):
+        path = self.storage.folder('CONFIG') / 'settings.json'
+        for old_value in (35, 'obsolete', None, {'unexpected': 'value'}):
+            with self.subTest(old_value=old_value), patch.object(self.player, 'status', return_value=None), \
+                 patch.object(self.player, 'play') as play:
+                self.storage.write(path, dict(volume=old_value, favorites=[sample()]))
+                self.assertEqual(self.runtime.settings(), {'favorites': [self.browser.station(sample())]})
+                self.assertEqual(self.runtime.action('play', sample()),
+                                 {'playing': None, 'favorites': [self.browser.station(sample())]})
+                play.assert_called_once_with(sample())
+                self.runtime.action('favorite', sample())
+                self.assertEqual(self.storage.read(path, None), {'favorites': []})
+
+    def test_volume_command_is_rejected(self):
+        result = subprocess.run([sys.executable, str(PLUGIN / 'runtime.py'), 'volume', '35'],
+                                text=True, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('invalid choice', result.stderr)
+        with self.assertRaisesRegex(ValueError, 'Unknown Radio Globe command'):
+            self.runtime.action('volume', 35)
 
     def test_bar_status_has_no_network_or_favorites_payload(self):
         with patch.object(self.player, 'status', return_value=None), patch.object(self.browser, 'request') as request, \
@@ -180,21 +198,29 @@ class RadioTests(unittest.TestCase):
         process.poll.return_value = None
         with patch.object(self.player.shutil, 'which', return_value='/usr/bin/mpv'), \
              patch.object(self.player, 'stop') as stop, patch.object(self.player.subprocess, 'Popen', return_value=process) as launch, \
-             patch.object(Path, 'exists', return_value=True):
-            self.player.play(record, 45)
+             patch.object(Path, 'exists', return_value=True), patch.object(Path, 'is_file', return_value=True):
+            self.assertEqual(self.player.play(record), {'station': self.browser.station(record)})
         stop.assert_called_once()
         argv = launch.call_args.args[0]
         self.assertEqual(argv[-2:], ['--', record['url']])
         self.assertIn('--no-config', argv)
         self.assertIn('--load-scripts=no', argv)
-        self.assertIn('--volume=45', argv)
+        self.assertIn('--volume=100', argv)
+        self.assertIn('--audio-client-name=Radio Globe', argv)
+        self.assertIn('--force-media-title=' + self.browser.station(record)['name'], argv)
+        self.assertIn('--script=' + self.player.MPRIS_SCRIPTS[0], argv)
         self.assertNotIn('shell', launch.call_args.kwargs)
 
-    def test_missing_player_and_invalid_volume_fail_explicitly(self):
+    def test_missing_player_fails_explicitly(self):
         with patch.object(self.player.shutil, 'which', return_value=None), self.assertRaisesRegex(RuntimeError, 'mpv'):
-            self.player.play(sample(), 60)
-        with self.assertRaises(ValueError):
-            self.runtime.action('volume', 101)
+            self.player.play(sample())
+
+    def test_player_status_reads_only_the_current_stream(self):
+        record = self.browser.station(sample())
+        self.storage.write(self.storage.folder('RUNTIME') / 'playing.json', record)
+        with patch.object(self.player, 'ipc', return_value=record['url']) as ipc:
+            self.assertEqual(self.player.status(), {'station': record})
+        ipc.assert_called_once_with(['get_property', 'path'])
 
     def test_disappeared_player_never_claims_to_be_playing(self):
         self.storage.write(self.storage.folder('RUNTIME') / 'playing.json', sample())
@@ -216,7 +242,7 @@ class RadioTests(unittest.TestCase):
             import eitr_plugin_manifest
             import eitr_plugin_review
             manifest = eitr_plugin_manifest.manifest(PLUGIN)
-            self.assertEqual(manifest['packages'], ['mpv'])
+            self.assertEqual(manifest['packages'], ['mpv', 'mpv-mpris'])
             self.assertNotIn('service', manifest)
             self.assertEqual(manifest['ui']['barItems'][0]['refreshInterval'], 30000)
             records = eitr_plugin_review.snapshot(PLUGIN, Path(self.temporary.name) / 'review')

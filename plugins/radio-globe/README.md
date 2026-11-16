@@ -1,8 +1,8 @@
 # Radio Globe
 
 Explore live radio on an orthographic globe, search for stations, save favourites
-and listen through mpv. The manifest requests only the official Arch `mpv`
-package. Installation uses Eitr's normal package review; the plugin does not
+and listen through mpv. The manifest requests the official Arch `mpv` and `mpv-mpris`
+packages; the second shows the playing station in the bar's media controls. Installation uses Eitr's normal package review; the plugin does not
 install packages or start a login service itself.
 
 ## Controls
@@ -21,9 +21,9 @@ install packages or start a login service itself.
   **Favourites** shows saved stations, including when offline. Search filters
   favourites locally. The ◎ button hides the globe to give the list more room;
   its **Hide globe** / **Show globe** tooltip appears on hover or keyboard focus.
-- **Stop**, **−** and **+** control this player's stream and volume in 5% steps.
-  They never change system volume or control other players. Closing the panel
-  keeps audio playing. Reopening it restores current local player state.
+- **Stop** ends this player's stream. Closing the panel keeps audio playing.
+  Reopening it restores current local player state. Adjust the **Radio Globe**
+  stream in Eitr's Volume panel.
 
 The globe spins slowly until the first drag, click or scroll, and pauses while
 hovered. Reduce motion disables the spin. Eitr does not expose its motion
@@ -59,7 +59,7 @@ playing stream.
 ## Local files and playback
 
 - `$XDG_CONFIG_HOME/eitr/plugins/radio-globe/settings.json`: favourites keyed by
-  station UUID and player volume. Writes are locked, private and atomic; at most
+  station UUID. Writes are locked, private and atomic; at most
   200 favourites are retained.
 - `$XDG_CACHE_HOME/eitr/plugins/radio-globe/countries.json`: the one-day cache.
 - `$XDG_RUNTIME_DIR/eitr/plugins/radio-globe/`: private mpv socket and current
@@ -68,12 +68,13 @@ playing stream.
   or remembered PIDs are signalled.
 
 Config and cache paths fall back to `~/.config` and `~/.cache`. Playback requires
-`XDG_RUNTIME_DIR`. mpv disables user configuration, scripts, video and yt-dlp,
+`XDG_RUNTIME_DIR`. mpv disables user configuration, scripts other than mpv-mpris, video and yt-dlp,
 receives the stream as one argument after `--`, and has an eight-second network
 timeout. Playback ends when the stream ends. The plugin reports local playback
 state while the panel is open; it performs no station/API polling while closed.
 Lofi Radio's interactive lowfi terminal cannot play an arbitrary station, so
-this plugin uses the brief's mpv fallback with its own volume.
+this plugin uses the brief's mpv fallback. mpv starts at `--volume=100` with
+`--audio-client-name=Radio Globe` so Eitr's per-application slider controls volume.
 
 ## Privacy
 

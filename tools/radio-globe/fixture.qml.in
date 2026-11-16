@@ -39,7 +39,7 @@ ShellRoot {
     FloatingWindow {
         id: window
         visible: true
-        implicitWidth: 440
+        implicitWidth: 640
         implicitHeight: panel.implicitHeight + 80
         color: api.background
         Rectangle {
@@ -58,6 +58,7 @@ ShellRoot {
             id: sequence
             property int step: 0
             property int closedTicks: 0
+            property int tooltipTicks: 0
             interval: 250; repeat: true; running: true
             onTriggered: {
                 const state = fixture.find(panel, "radio-backend");
@@ -114,6 +115,7 @@ ShellRoot {
                 if (step === 2) {
                     if (state.queryMode !== "tag" || state.stations.length !== 3) throw new Error("Search coalescing failed");
                     const tip = toggle.resources.find(resource => resource.objectName === "action-tooltip");
+                    if (!tip.visible && tooltipTicks++ < 4) return;
                     if (!tip.visible) throw new Error("Globe tooltip missing on keyboard focus");
                     panel.forceActiveFocus();
                     state.search("name", "failure", 0);

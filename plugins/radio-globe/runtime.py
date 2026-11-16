@@ -17,15 +17,13 @@ def settings():
     favorites = saved.get('favorites', [])
     if not isinstance(favorites, list):
         raise RuntimeError('Saved Radio Globe favourites are invalid')
-    return dict(volume=max(0, min(100, int(saved.get('volume', 60)))),
-                favorites=[entry for record in favorites[:200] if (entry := browser.station(record))])
+    return dict(favorites=[entry for record in favorites[:200] if (entry := browser.station(record))])
 
 
 def state():
     saved = settings()
     playing = player.status()
-    return dict(playing=playing, volume=playing['volume'] if playing else saved['volume'],
-                favorites=saved['favorites'])
+    return dict(playing=playing, favorites=saved['favorites'])
 
 
 def action(command, value=None):
@@ -39,16 +37,9 @@ def action(command, value=None):
         fcntl.flock(lock, fcntl.LOCK_EX)
         saved = settings()
         if command == 'play':
-            player.play(value, saved['volume'])
+            player.play(value)
         elif command == 'stop':
             player.stop()
-        elif command == 'volume':
-            volume = int(value)
-            if not 0 <= volume <= 100:
-                raise ValueError('Volume must be between 0 and 100')
-            player.set_volume(volume)
-            saved['volume'] = volume
-            write(folder('CONFIG') / 'settings.json', saved)
         elif command == 'favorite':
             entry = browser.station(value)
             if not entry:
@@ -60,12 +51,14 @@ def action(command, value=None):
                     raise ValueError('The favourites list is full (200 stations)')
                 saved['favorites'].append(entry)
             write(folder('CONFIG') / 'settings.json', saved)
+        else:
+            raise ValueError('Unknown Radio Globe command')
         return state()
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['status', 'state', 'countries', 'stations', 'play', 'stop', 'volume', 'favorite'])
+    parser.add_argument('command', choices=['status', 'state', 'countries', 'stations', 'play', 'stop', 'favorite'])
     parser.add_argument('values', nargs='*')
     args = parser.parse_args()
     # A hard outer deadline also bounds DNS, file locking and IPC.
@@ -84,10 +77,6 @@ def main():
                 if len(payload) > 8192:
                     raise ValueError('Station data is too large')
                 value = json.loads(payload)
-            elif args.command == 'volume':
-                if len(args.values) != 1:
-                    raise ValueError('Volume needs one value')
-                value = args.values[0]
             result = action(args.command, value)
         print(json.dumps(dict(ok=True, **result), ensure_ascii=False, separators=(',', ':')))
     except (OSError, RuntimeError, ValueError, TypeError) as error:

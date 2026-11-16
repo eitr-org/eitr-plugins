@@ -4,6 +4,7 @@ import shutil
 import socket
 import subprocess
 import time
+from pathlib import Path
 
 from browser import AGENT, station
 from storage import folder, read, write
@@ -39,7 +40,7 @@ def status():
         active = ipc(['get_property', 'path'])
         if active != saved.get('url'):
             return None
-        return dict(station=saved, volume=round(float(ipc(['get_property', 'volume']))))
+        return dict(station=saved)
     except (OSError, RuntimeError, ValueError):
         return None
 
@@ -68,7 +69,10 @@ def stop():
     (folder('RUNTIME') / 'playing.json').unlink(missing_ok=True)
 
 
-def play(record, volume):
+MPRIS_SCRIPTS = ('/usr/lib/mpv-mpris/mpris.so', '/usr/share/mpv/scripts/mpris.so', '/etc/mpv/scripts/mpris.so')
+
+
+def play(record):
     cleaned = station(record)
     if cleaned is None:
         raise ValueError('Only checked HTTP or HTTPS stations can be played')
@@ -77,10 +81,14 @@ def play(record, volume):
         raise RuntimeError('Install the official mpv package to play stations')
     stop()
     path = folder('RUNTIME') / 'mpv.sock'
+    # The official mpv-mpris add-on makes the station visible to the bar's media controls;
+    # it is the only script loaded, and the station's name is its title.
+    mpris = next((candidate for candidate in MPRIS_SCRIPTS if Path(candidate).is_file()), None)
     arguments = [executable, '--no-config', '--load-scripts=no', '--ytdl=no', '--no-video',
+                 *(['--script=' + mpris] if mpris else []), '--force-media-title=' + cleaned['name'],
                  '--audio-display=no', '--no-terminal', '--idle=no', '--network-timeout=8',
                  '--input-default-bindings=no', '--input-vo-keyboard=no',
-                 '--user-agent=' + AGENT, '--volume=' + str(volume),
+                 '--user-agent=' + AGENT, '--volume=100', '--audio-client-name=Radio Globe',
                  '--input-ipc-server=' + str(path), '--', cleaned['url']]
     process = subprocess.Popen(arguments, start_new_session=True, stdin=subprocess.DEVNULL,
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -100,9 +108,4 @@ def play(record, volume):
             process.kill()
             process.wait(timeout=0.5)
         raise
-    return dict(station=cleaned, volume=volume)
-
-
-def set_volume(value):
-    if status():
-        ipc(['set_property', 'volume', value])
+    return dict(station=cleaned)

@@ -19,8 +19,8 @@ Item {
     readonly property color accent: api.palette.color4 || api.accent
     readonly property real radius: Math.min(width, height) * 0.43 * zoom
     signal chosen(var country)
-    implicitWidth: 320
-    implicitHeight: 310
+    implicitWidth: 300
+    implicitHeight: 340
     onLongitudeChanged: canvas.requestPaint()
     onLatitudeChanged: canvas.requestPaint()
     onZoomChanged: canvas.requestPaint()
@@ -113,6 +113,8 @@ Item {
         id: pointer
         anchors.fill: parent
         hoverEnabled: true
+        // The panel scrolls; without this its scroll area takes the drag over after a few pixels.
+        preventStealing: true
         property real previousX: 0
         property real previousY: 0
         property real distance: 0
