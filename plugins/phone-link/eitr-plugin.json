@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 2,
+  "id": "phone-link",
+  "name": "Phone Link",
+  "author": "The Eitr project",
+  "version": "0.1.0",
+  "description": "Connect phones, send files and control KDE Connect from the bar",
+  "icon": "icon.svg",
+  "rows": [],
+  "packages": [
+    "kdeconnect",
+    "python-gobject"
+  ],
+  "ui": {
+    "barItems": [
+      {
+        "id": "phone",
+        "title": "Phone Link",
+        "qml": "PhoneBarIcon.qml",
+        "dataStream": {
+          "run": "status.py",
+          "arguments": [
+            "--watch"
+          ]
+        },
+        "dataCommand": {
+          "run": "status.py",
+          "arguments": [
+            "--json"
+          ]
+        },
+        "refreshInterval": 0,
+        "panel": "devices"
+      }
+    ],
+    "panels": [
+      {
+        "id": "devices",
+        "title": "Phone Link",
+        "qml": "PhonePanel.qml",
+        "dataStream": {
+          "run": "status.py",
+          "arguments": [
+            "--watch"
+          ]
+        },
+        "dataCommand": {
+          "run": "status.py",
+          "arguments": [
+            "--json"
+          ]
+        },
+        "refreshInterval": 0,
+        "surface": "panel",
+        "header": false
+      }
+    ]
+  }
+}

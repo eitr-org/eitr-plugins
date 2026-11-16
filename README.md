@@ -8,6 +8,7 @@ Official plugins for [Eitr](https://github.com/eitr-org/eitr), reviewed by the E
 | [Lofi Radio](plugins/lofi-radio) | Lofi music through lowfi, controlled from the bar |
 | [Tailscale](plugins/tailscale) | Tailscale on the bar: connect, see your devices, copy their addresses and send or receive files |
 | [World clock](plugins/world-clock) | Offline city times immediately before the centred bar clock |
+| [Phone Link](plugins/phone-link) | Pair phones through KDE Connect, send files and clipboard text, and find your phone |
 
 ## Install
 

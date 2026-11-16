@@ -16,6 +16,10 @@
     {
       "id": "world-clock",
       "path": "plugins/world-clock"
+    },
+    {
+      "id": "phone-link",
+      "path": "plugins/phone-link"
     }
   ]
 }
