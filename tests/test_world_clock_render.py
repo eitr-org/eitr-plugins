@@ -39,10 +39,11 @@ class WorldClockRenderTests(unittest.TestCase):
                 output = result.stdout + result.stderr
                 self.assertEqual(result.returncode, 0, output)
                 self.assertIn('WORLD_CLOCK_RENDER_OK', output)
-                # PanelButton's icon label emits this host-owned warning under software rendering.
+                # PanelButton's icon label emits this host-owned warning under software rendering;
+                # matched by file, not line, so host edits elsewhere in the file do not break it.
                 # Keep all other binding loops fatal; the host checkout is read-only for this task.
                 checked_output = "\n".join(line for line in output.splitlines() if not (
-                    'components/PanelButton.qml[61:9]' in line
+                    'components/PanelButton.qml[' in line
                     and 'Binding loop detected for property "height"' in line))
                 for error in ('ReferenceError', 'TypeError', 'Binding loop', 'Cannot anchor', 'Unable to assign', 'Error:'):
                     self.assertNotIn(error, checked_output)

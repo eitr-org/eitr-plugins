@@ -2,6 +2,7 @@
 """Import public-domain Natural Earth land and IANA representative locations."""
 import argparse
 import json
+import math
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -17,13 +18,26 @@ def angle(value, digits):
 
 
 def markers(source):
-    result = {}
+    """One point per country: the spherical mean of all its time zone locations.
+
+    A country's first zone is often an outlying island (Brazil's is Fernando de Noronha), so
+    averaging them all lands inside the country; averaging on the sphere keeps countries that
+    span the date line (Kiribati, Fiji) in the Pacific."""
+    sums = {}
     for line in source.read_text().splitlines():
         if not line or line.startswith('#'):
             continue
         country, coordinate, *_ = line.split('\t')
         split = next(index for index in range(1, len(coordinate)) if coordinate[index] in '+-')
-        result.setdefault(country, [angle(coordinate[:split], 2), angle(coordinate[split:], 3)])
+        latitude = math.radians(angle(coordinate[:split], 2))
+        longitude = math.radians(angle(coordinate[split:], 3))
+        total = sums.setdefault(country, [0.0, 0.0, 0.0])
+        total[0] += math.cos(latitude) * math.cos(longitude)
+        total[1] += math.cos(latitude) * math.sin(longitude)
+        total[2] += math.sin(latitude)
+    result = {}
+    for country, (x, y, z) in sums.items():
+        result[country] = [round(math.degrees(math.atan2(z, math.hypot(x, y))), 2), round(math.degrees(math.atan2(y, x)), 2)]
     return result
 
 
