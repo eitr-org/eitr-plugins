@@ -1,6 +1,6 @@
 # Radio Globe
 
-Explore live radio on an orthographic globe, search for stations, save favourites
+Explore live radio on an orthographic globe, search for stations, save favorites
 and listen through mpv. The manifest requests the official Arch `mpv` and `python-gobject`
 packages. `media.py` puts the playing station in the desktop's media controls as a live
 stream: Stop only, no pause, seeking or length, and the song the station announces as the
@@ -21,11 +21,11 @@ install packages or start a login service itself.
   of the search field opens a small menu to choose. By country, typing lists the matching
   countries (Enter takes the first), the way to reach small ones. Empty search returns to
   the chosen country. Results arrive in pages of 50; **Previous** and **Next** change pages.
-- **Favourites**, beside the search field, shows saved stations, including when offline;
+- **Favorites**, beside the search field, shows saved stations, including when offline;
   the back arrow beside its heading (or Escape, or the button again) returns to the list.
 - Click a station name to play: the globe turns to the station's own location when
-  Radio Browser lists one, else to its country. Its star saves or removes a favourite.
-  Search filters favourites locally.
+  Radio Browser lists one, else to its country. Its star saves or removes a favorite.
+  Search filters favorites locally.
 - **Stop** is in the desktop's media controls (the bar and the Media panel). Closing the panel keeps audio playing.
   Reopening it restores current local player state. Adjust the **Radio Globe**
   stream in Eitr's Volume panel.
@@ -63,9 +63,9 @@ playing stream.
 
 ## Local files and playback
 
-- `$XDG_CONFIG_HOME/eitr/plugins/radio-globe/settings.json`: favourites keyed by
+- `$XDG_CONFIG_HOME/eitr/plugins/radio-globe/settings.json`: favorites keyed by
   station UUID. Writes are locked, private and atomic; at most
-  200 favourites are retained.
+  200 favorites are retained.
 - `$XDG_CACHE_HOME/eitr/plugins/radio-globe/countries.json`: the one-day cache.
 - `$XDG_RUNTIME_DIR/eitr/plugins/radio-globe/`: private mpv socket and current
   station metadata. Stop sends `quit` only to that socket. Replacing a station
@@ -86,11 +86,11 @@ this plugin uses the brief's mpv fallback. mpv starts at `--volume=100` with
 **Station lists come from Radio Browser; streams come from each station.**
 Radio Browser receives your IP address and country/name/tag requests. A chosen
 station and its streaming/CDN providers receive your IP address and stream
-requests. HTTP streams are unencrypted. Favourites stay on this computer; the
+requests. HTTP streams are unencrypted. Favorites stay on this computer; the
 plugin sends no personal identifiers, analytics, votes or click-tracking calls.
 The country shapes and marker locations are bundled and need no map service.
 
-## Map sources and licences
+## Map sources and licenses
 
 Made with [Natural Earth](https://www.naturalearthdata.com/). `data/shapes.json`
 holds the country shapes of **1:110m Admin 0 – Countries**, simplified to 0.25 degrees
@@ -102,7 +102,7 @@ code (areas without one under `-`, drawn but not selectable). Import the
 and [50m](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_50m_admin_0_countries.geojson)
 GeoJSON with `tools/radio-globe/build-map.py --countries-coarse … --countries …`.
 Natural Earth data is [public domain](https://www.naturalearthdata.com/about/terms-of-use/).
-The repository's MIT licence covers the plugin code, not a claim of ownership
+The repository's MIT license covers the plugin code, not a claim of ownership
 over these public-domain coordinates.
 
 `data/countries.json` holds 250 marker positions: Natural Earth's label point for

@@ -14,7 +14,7 @@ Item {
     property string countryCode: ""
     property string countryName: ""
     property bool filterOpen: false
-    // Leaves Favourites for the list it replaced.
+    // Leaves Favorites for the list it replaced.
     function closeFavorites() {
         if (!favoritesOnly) return;
         favoritesOnly = false;
@@ -106,7 +106,7 @@ Item {
             // field, so they sit on top of it and take their own clicks.
             Item {
                 id: searchBox
-                width: parent.width - favourites.width - 6; height: 32
+                width: parent.width - favorites.width - 6; height: 32
                 Loader {
                     id: search
                     anchors.fill: parent
@@ -147,10 +147,10 @@ Item {
                 }
             }
             RadioAction {
-                id: favourites
-                objectName: "favourites"
+                id: favorites
+                objectName: "favorites"
                 api: panel.api; width: 110
-                text: Strings.tr("Favourites"); selected: panel.favoritesOnly
+                text: Strings.tr("Favorites"); selected: panel.favoritesOnly
                 onClicked: { panel.filterOpen = false; if (panel.favoritesOnly) panel.closeFavorites(); else panel.favoritesOnly = true; }
             }
         }
@@ -173,14 +173,14 @@ Item {
                 width: explorer.width - Math.floor(explorer.width * 0.5) - 12
                 height: explorer.height
                 spacing: 4
-                // While Favourites shows: the way back to the list it replaced.
+                // While Favorites shows: the way back to the list it replaced.
                 Row {
-                    id: favouritesHeading
+                    id: favoritesHeading
                     width: parent.width; height: 28
                     visible: panel.favoritesOnly
                     spacing: 4
                     RadioAction {
-                        objectName: "favourites-back"
+                        objectName: "favorites-back"
                         api: panel.api
                         width: 28; height: 28; icon: true
                         text: "\u{F0141}"
@@ -190,7 +190,7 @@ Item {
                     }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: Strings.tr("Favourites")
+                        text: Strings.tr("Favorites")
                         textFormat: Text.PlainText
                         color: panel.api.foreground
                         font.family: panel.api.fontFamily
@@ -214,7 +214,7 @@ Item {
                 ListView {
                     id: list
                     width: parent.width
-                    height: parent.height - (status.visible ? status.height + parent.spacing : 0) - (favouritesHeading.visible ? favouritesHeading.height + parent.spacing : 0)
+                    height: parent.height - (status.visible ? status.height + parent.spacing : 0) - (favoritesHeading.visible ? favoritesHeading.height + parent.spacing : 0)
                     visible: !panel.pickingCountry
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
@@ -236,7 +236,7 @@ Item {
                         anchors.centerIn: parent
                         width: parent.width
                         visible: panel.displayed.length === 0 && !backend.busy
-                        text: Strings.tr(panel.favoritesOnly ? "No saved favourites yet" : "No stations to show")
+                        text: Strings.tr(panel.favoritesOnly ? "No saved favorites yet" : "No stations to show")
                         textFormat: Text.PlainText
                         wrapMode: Text.Wrap
                         horizontalAlignment: Text.AlignHCenter
@@ -250,7 +250,7 @@ Item {
                 ListView {
                     id: countryList
                     width: parent.width
-                    height: parent.height - (status.visible ? status.height + parent.spacing : 0) - (favouritesHeading.visible ? favouritesHeading.height + parent.spacing : 0)
+                    height: parent.height - (status.visible ? status.height + parent.spacing : 0) - (favoritesHeading.visible ? favoritesHeading.height + parent.spacing : 0)
                     visible: panel.pickingCountry
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds

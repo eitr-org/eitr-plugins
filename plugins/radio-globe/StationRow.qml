@@ -31,7 +31,7 @@ Item {
         y: 8; width: 28; height: 28
         icon: true
         text: row.favorite ? "★" : "☆"
-        description: Strings.tr(row.favorite ? "Remove favourite" : "Save favourite")
+        description: Strings.tr(row.favorite ? "Remove favorite" : "Save favorite")
         onClicked: row.favoriteRequested()
     }
     Text {

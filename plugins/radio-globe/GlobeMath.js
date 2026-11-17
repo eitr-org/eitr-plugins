@@ -22,7 +22,7 @@ function unproject(x, y, centerLongitude, centerLatitude) {
     return [centerLongitude + relative / radians, latitude / radians];
 }
 
-// One ring's centre and reach (degrees), so drawing can skip polygons out of view.
+// One ring's center and reach (degrees), so drawing can skip polygons out of view.
 function extent(ring) {
     const radians = Math.PI / 180;
     let x = 0, y = 0, z = 0;

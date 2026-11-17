@@ -37,7 +37,7 @@ Loader {
     onLoaded: {
         item.text = Qt.binding(() => button.text);
         item.flat = Qt.binding(() => button.icon);
-        // The button keeps 8 px on the right of its text; the same on the left centres a glyph.
+        // The button keeps 8 px on the right of its text; the same on the left centers a glyph.
         item.textInset = 8;
         item.textSize = Qt.binding(() => button.icon ? 16 : 13);
         item.selected = Qt.binding(() => button.selected);

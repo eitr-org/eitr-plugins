@@ -85,7 +85,7 @@ Item {
         const code = GlobeMath.countryAt(drawnShapes, place[0], place[1]);
         return code ? countries.find(country => country.code === code) || null : null;
     }
-    // Zooms by a factor, keeping the place under the pointer where it is (or the centre).
+    // Zooms by a factor, keeping the place under the pointer where it is (or the center).
     function zoomBy(factor, pointerX, pointerY) {
         const next = Math.max(0.85, Math.min(maximumZoom, zoom * factor));
         if (next === zoom) return;

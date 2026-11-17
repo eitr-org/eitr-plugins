@@ -4,7 +4,7 @@
   "name": "Radio Globe",
   "author": "The Eitr project",
   "version": "0.1.0",
-  "description": "Explore live radio around the world and save favourite stations",
+  "description": "Explore live radio around the world and save favorite stations",
   "icon": "icon.svg",
   "rows": [],
   "packages": [

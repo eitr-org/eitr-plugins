@@ -94,12 +94,12 @@ ShellRoot {
                     if (!menu.visible) throw new Error("Filter menu did not open");
                     menu.chosen("tag");
                     if (panel.filterOpen || panel.searchMode !== "tag") throw new Error("Filter choice failed");
-                    // Favourites shows a way back that returns to the list it replaced.
+                    // Favorites shows a way back that returns to the list it replaced.
                     panel.favoritesOnly = true;
-                    const backButton = fixture.find(panel, "favourites-back");
-                    if (!backButton || !backButton.visible) throw new Error("Favourites has no way back");
+                    const backButton = fixture.find(panel, "favorites-back");
+                    if (!backButton || !backButton.visible) throw new Error("Favorites has no way back");
                     backButton.clicked();
-                    if (panel.favoritesOnly) throw new Error("Back did not leave Favourites");
+                    if (panel.favoritesOnly) throw new Error("Back did not leave Favorites");
                     // By country: typing lists matching countries, and choosing one selects it.
                     panel.searchMode = "country";
                     panel.searchText = state.countries[0].name.slice(0, 3);

@@ -48,7 +48,7 @@ def station(record):
     result = dict(stationuuid=identifier, name=text(record.get('name')) or 'Unnamed station',
                   tags=text(record.get('tags')), codec=text(record.get('codec'), 24), bitrate=bitrate,
                   countrycode=text(record.get('countrycode'), 2), url=address, lastcheckok=1)
-    # Radio Browser names them geo_lat/geo_long; saved favourites keep the checked location.
+    # Radio Browser names them geo_lat/geo_long; saved favorites keep the checked location.
     saved = record.get('location') if isinstance(record.get('location'), list) and len(record.get('location')) == 2 else [None, None]
     place = coordinates(record.get('geo_lat'), record.get('geo_long')) or coordinates(*saved)
     if place:

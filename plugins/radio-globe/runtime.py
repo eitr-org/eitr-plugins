@@ -16,7 +16,7 @@ def settings():
         raise RuntimeError('Saved Radio Globe settings are invalid')
     favorites = saved.get('favorites', [])
     if not isinstance(favorites, list):
-        raise RuntimeError('Saved Radio Globe favourites are invalid')
+        raise RuntimeError('Saved Radio Globe favorites are invalid')
     return dict(favorites=[entry for record in favorites[:200] if (entry := browser.station(record))])
 
 
@@ -48,7 +48,7 @@ def action(command, value=None):
             saved['favorites'] = [record for record in saved['favorites'] if record['stationuuid'] != entry['stationuuid']]
             if not existing:
                 if len(saved['favorites']) >= 200:
-                    raise ValueError('The favourites list is full (200 stations)')
+                    raise ValueError('The favorites list is full (200 stations)')
                 saved['favorites'].append(entry)
             write(folder('CONFIG') / 'settings.json', saved)
         else:
