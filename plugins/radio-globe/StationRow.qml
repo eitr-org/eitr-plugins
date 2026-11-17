@@ -12,9 +12,11 @@ Item {
     property bool last: false
     signal playRequested()
     signal favoriteRequested()
-    implicitHeight: 70
+    // 8 px above the name keeps it clear of the divider under the previous row.
+    implicitHeight: 78
     RadioAction {
         api: row.api
+        y: 8
         width: parent.width - 38
         height: 28
         text: (row.playing ? "▶ " : "") + row.station.name
@@ -26,14 +28,14 @@ Item {
     RadioAction {
         api: row.api
         anchors.right: parent.right
-        width: 28; height: 28
+        y: 8; width: 28; height: 28
         icon: true
         text: row.favorite ? "★" : "☆"
         description: Strings.tr(row.favorite ? "Remove favourite" : "Save favourite")
         onClicked: row.favoriteRequested()
     }
     Text {
-        x: 8; y: 30; width: parent.width - 16
+        x: 8; y: 38; width: parent.width - 16
         text: row.station.tags || Strings.tr("No tags")
         textFormat: Text.PlainText
         elide: Text.ElideRight
@@ -43,7 +45,7 @@ Item {
         font.pixelSize: 11
     }
     Text {
-        x: 8; y: 46; width: parent.width - 16
+        x: 8; y: 54; width: parent.width - 16
         text: (row.station.codec || Strings.tr("Unknown codec")) + (row.station.bitrate ? " · " + row.station.bitrate + " kb/s" : "")
         textFormat: Text.PlainText
         color: row.api.foreground
