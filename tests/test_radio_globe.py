@@ -125,6 +125,15 @@ class RadioTests(unittest.TestCase):
         self.assertEqual(calls, [['quit']])
         runner.assert_not_called()
 
+    def test_cached_countries_take_the_bundled_markers_of_this_version(self):
+        records = [{'name': 'Brazil', 'iso_3166_1': 'BR', 'stationcount': '300'}]
+        with patch.object(self.browser, 'request', return_value=records), patch.object(self.browser.time, 'time', return_value=100000):
+            self.browser.countries()
+            cache = json.loads((self.storage.folder('CACHE') / 'countries.json').read_text())
+            self.assertNotIn('location', cache['countries'][0])
+            with patch.dict(self.browser.LOCATIONS, {'BR': [-12.0, -50.0]}):
+                self.assertEqual(self.browser.countries()['countries'][0]['location'], [-12.0, -50.0])
+
     def test_country_cache_is_one_day_and_offline_can_use_stale_data(self):
         records = [{'name': 'Brazil', 'iso_3166_1': 'BR', 'stationcount': '300'},
                    {'name': 'Broken', 'iso_3166_1': 'XX', 'stationcount': 'oops'}, None]

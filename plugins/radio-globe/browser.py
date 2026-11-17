@@ -103,11 +103,16 @@ def request(path, parameters=None):
             signal.setitimer(signal.ITIMER_REAL, max(0.01, previous_timer[0] - (time.monotonic() - started)))
 
 
+def located(countries):
+    """Each country with its bundled marker, read now so a plugin update moves cached dots too."""
+    return [dict(country, location=LOCATIONS.get(country.get('code'))) for country in countries if isinstance(country, dict)]
+
+
 def countries():
     path = folder('CACHE') / 'countries.json'
     cached = read(path, {})
     if isinstance(cached, dict) and 0 <= time.time() - cached.get('saved', 0) < 86400:
-        return dict(countries=cached.get('countries', []), stale=False)
+        return dict(countries=located(cached.get('countries', [])), stale=False)
     try:
         records = request('/json/countries', {'hidebroken': 'true'})
         result = []
@@ -120,14 +125,13 @@ def countries():
             except (TypeError, ValueError):
                 continue
             if re.fullmatch('[A-Z]{2}', code) and count > 0:
-                result.append(dict(code=code, name=text(record.get('name')), count=count,
-                                   location=LOCATIONS.get(code)))
+                result.append(dict(code=code, name=text(record.get('name')), count=count))
         result.sort(key=lambda country: country['name'].casefold())
         write(path, dict(saved=time.time(), countries=result))
-        return dict(countries=result, stale=False)
+        return dict(countries=located(result), stale=False)
     except RuntimeError:
         if isinstance(cached, dict) and cached.get('countries'):
-            return dict(countries=cached['countries'], stale=True)
+            return dict(countries=located(cached['countries']), stale=True)
         raise
 
 
