@@ -82,13 +82,13 @@ def simplify(points, tolerance=0.4):
     return simplify(points[:pivot + 1], tolerance)[:-1] + simplify(points[pivot:], tolerance)
 
 
-def land(source):
+def land(source, tolerance=0.4):
     result = []
     for feature in json.loads(source.read_text())['features']:
         geometry = feature['geometry']
         polygons = [geometry['coordinates']] if geometry['type'] == 'Polygon' else geometry['coordinates']
         for polygon in polygons:
-            ring = simplify(polygon[0])
+            ring = simplify(polygon[0], tolerance)
             if len(ring) >= 4:
                 result.append([round(coordinate, 1) for point in ring for coordinate in point[:2]])
     return result
@@ -107,12 +107,16 @@ def validate(outlines):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--land', type=Path, help='Natural Earth ne_110m_land.geojson to import')
+    parser.add_argument('--land-detail', type=Path, help='Natural Earth ne_50m_land.geojson for the zoomed-in outline')
     parser.add_argument('--countries', type=Path, help='Natural Earth ne_50m_admin_0_countries.geojson to import')
     parser.add_argument('--zone-tab', type=Path, default=Path('/usr/share/zoneinfo/zone.tab'))
     parser.add_argument('--check', action='store_true')
     args = parser.parse_args()
     outlines = land(args.land) if args.land else json.loads((DATA / 'land.json').read_text())
     validate(outlines)
+    # Zoomed in, the globe draws this finer outline: 1:50m, simplified to 0.1 degrees.
+    detail = land(args.land_detail, 0.1) if args.land_detail else json.loads((DATA / 'land-detail.json').read_text())
+    validate(detail)
     zones = zone_markers(args.zone_tab)
     if args.countries:
         locations = dict(zones, **label_markers(args.countries))
@@ -124,9 +128,9 @@ def main():
     if any(not -90 <= latitude <= 90 or not -180 <= longitude <= 180 for latitude, longitude in locations.values()):
         raise SystemExit('Marker coordinate out of range')
     if args.check:
-        print(f'{len(outlines)} land rings and {len(locations)} country markers validated')
+        print(f'{len(outlines)} land rings, {len(detail)} detailed rings and {len(locations)} country markers validated')
     else:
-        for filename, payload in [('land.json', outlines), ('countries.json', locations)]:
+        for filename, payload in [('land.json', outlines), ('land-detail.json', detail), ('countries.json', locations)]:
             (DATA / filename).write_text(json.dumps(payload, sort_keys=True, separators=(',', ':')) + '\n')
 
 

@@ -14,7 +14,7 @@ install packages or start a login service itself.
   which Eitr appends to the plugin title in its native bar tooltip; stopping
   clears the detail. The local status refresh is every 30 seconds,
   with another refresh on hover.
-- Drag the globe to rotate, scroll for a small zoom, hover a dot for its country
+- Drag the globe to rotate, scroll to zoom up to 4× towards the pointer, hover a dot for its country
   and station count, and click to load that country's stations. The country
   dropdown provides keyboard selection and reaches small or overlapping dots.
 - Search globally by **name** or **tag**. Empty search returns to the chosen
@@ -95,6 +95,10 @@ The bundled `data/land.json` is a small, simplified geometry-only derivative:
 from a locally cached simplified Natural Earth derivative; no other plugin code
 is included. The [upstream GeoJSON](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_110m_land.geojson)
 can be imported with `tools/radio-globe/build-map.py` for a fresh simplification.
+Zoomed in past 1.5×, the globe draws `data/land-detail.json` instead: **1:50m Land**,
+822 rings simplified to 0.1 degrees, about 139 KiB, read the first time you zoom in.
+Import the [upstream GeoJSON](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_50m_land.geojson)
+with `build-map.py --land-detail`.
 Natural Earth data is [public domain](https://www.naturalearthdata.com/about/terms-of-use/).
 The repository's MIT licence covers the plugin code, not a claim of ownership
 over these public-domain coordinates.
