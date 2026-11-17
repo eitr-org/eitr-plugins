@@ -13,6 +13,26 @@ Item {
     property string searchMode: "name"
     property string countryCode: ""
     property string countryName: ""
+    property bool filterOpen: false
+    // Leaves Favourites for the list it replaced.
+    function closeFavorites() {
+        if (!favoritesOnly) return;
+        favoritesOnly = false;
+        runSearch();
+    }
+    function chooseMode(mode) {
+        filterOpen = false;
+        if (mode === searchMode) return;
+        searchMode = mode;
+        debounce.restart();
+        if (search.item) search.item.forceActiveFocus();
+    }
+    Keys.onEscapePressed: event => {
+        if (filterOpen) filterOpen = false;
+        else if (favoritesOnly) closeFavorites();
+        else { event.accepted = false; return; }
+        event.accepted = true;
+    }
     property bool reduceMotion: true
     // By country, typing lists the matching countries; choosing one shows its stations.
     readonly property bool pickingCountry: searchMode === "country" && searchText.trim() !== "" && !favoritesOnly
@@ -62,18 +82,12 @@ Item {
         Row {
             width: parent.width; spacing: 6
             Text {
-                width: parent.width - favourites.width - 6 - (retry.visible ? retry.width + 6 : 0); height: 32
+                width: parent.width - (retry.visible ? retry.width + 6 : 0); height: 32
                 verticalAlignment: Text.AlignVCenter
                 text: Strings.tr("Radio Globe")
                 color: panel.api.foreground
                 font.family: panel.api.fontFamily
                 font.pixelSize: 16; font.bold: true
-            }
-            RadioAction {
-                id: favourites
-                api: panel.api; width: 110
-                text: Strings.tr("Favourites"); selected: panel.favoritesOnly
-                onClicked: { panel.favoritesOnly = !panel.favoritesOnly; if (!panel.favoritesOnly) panel.runSearch(); }
             }
             RadioAction {
                 id: retry
@@ -90,10 +104,13 @@ Item {
             spacing: 6
             Loader {
                 id: search
-                width: parent.width - modeButton.width - 6; height: 32
+                width: parent.width - favourites.width - 6; height: 32
                 sourceComponent: panel.api.controls.textField
                 onLoaded: {
-                    item.placeholderText = Strings.tr("Search stations");
+                    item.placeholderText = Qt.binding(() => Strings.tr(({name: "Search stations by name", tag: "Search stations by tag", country: "Search countries"})[panel.searchMode]));
+                    // Room for the search glyph on the left and the filter button on the right.
+                    item.leftPadding = 32;
+                    item.rightPadding = 38;
                     item.maximumLength = 100;
                     item.textChanged.connect(() => { panel.searchText = item.text; debounce.restart(); });
                     item.accepted.connect(() => {
@@ -103,12 +120,32 @@ Item {
                         else panel.runSearch();
                     });
                 }
+                Text {
+                    x: 10; anchors.verticalCenter: parent.verticalCenter
+                    text: "\u{F0349}"
+                    color: panel.api.foreground
+                    opacity: 0.6
+                    font.family: panel.api.fontFamily
+                    font.pixelSize: 15
+                }
+                RadioAction {
+                    id: filterButton
+                    objectName: "search-filter"
+                    api: panel.api
+                    anchors.right: parent.right; anchors.rightMargin: 2; anchors.verticalCenter: parent.verticalCenter
+                    width: 28; height: 28; icon: true
+                    text: "\u{F0236}"
+                    description: Strings.tr("Search filter")
+                    selected: panel.filterOpen
+                    onClicked: panel.filterOpen = !panel.filterOpen
+                }
             }
             RadioAction {
-                id: modeButton
-                api: panel.api; width: 96
-                text: Strings.tr(({name: "By name", tag: "By tag", country: "By country"})[panel.searchMode])
-                onClicked: { panel.searchMode = ({name: "tag", tag: "country", country: "name"})[panel.searchMode]; debounce.restart(); }
+                id: favourites
+                objectName: "favourites"
+                api: panel.api; width: 110
+                text: Strings.tr("Favourites"); selected: panel.favoritesOnly
+                onClicked: { panel.filterOpen = false; if (panel.favoritesOnly) panel.closeFavorites(); else panel.favoritesOnly = true; }
             }
         }
         Row {
@@ -130,12 +167,36 @@ Item {
                 width: explorer.width - Math.floor(explorer.width * 0.5) - 12
                 height: explorer.height
                 spacing: 4
+                // While Favourites shows: the way back to the list it replaced.
+                Row {
+                    id: favouritesHeading
+                    width: parent.width; height: 28
+                    visible: panel.favoritesOnly
+                    spacing: 4
+                    RadioAction {
+                        objectName: "favourites-back"
+                        api: panel.api
+                        width: 28; height: 28; icon: true
+                        text: "\u{F0141}"
+                        description: Strings.tr("Back")
+                        anchors.verticalCenter: parent.verticalCenter
+                        onClicked: panel.closeFavorites()
+                    }
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: Strings.tr("Favourites")
+                        textFormat: Text.PlainText
+                        color: panel.api.foreground
+                        font.family: panel.api.fontFamily
+                        font.pixelSize: 13; font.bold: true
+                    }
+                }
                 Text {
                     id: status
                     width: parent.width
                     // Only when there is something to say: nothing chosen and nothing typed shows nothing.
                     visible: text !== ""
-                    text: backend.error ? Strings.tr("Request failed") : backend.stale ? Strings.tr("Offline · showing saved countries") : backend.busy ? Strings.tr("Loading…") : panel.favoritesOnly ? Strings.tr("Favourites") : panel.pickingCountry ? "" : panel.searchText.trim() ? Strings.tr("Search results") : panel.countryName
+                    text: backend.error ? Strings.tr("Request failed") : backend.stale ? Strings.tr("Offline · showing saved countries") : backend.busy ? Strings.tr("Loading…") : panel.favoritesOnly ? "" : panel.pickingCountry ? "" : panel.searchText.trim() ? Strings.tr("Search results") : panel.countryName
                     textFormat: Text.PlainText
                     elide: Text.ElideRight
                     color: panel.api.foreground
@@ -147,7 +208,7 @@ Item {
                 ListView {
                     id: list
                     width: parent.width
-                    height: parent.height - (status.visible ? status.height + parent.spacing : 0)
+                    height: parent.height - (status.visible ? status.height + parent.spacing : 0) - (favouritesHeading.visible ? favouritesHeading.height + parent.spacing : 0)
                     visible: !panel.pickingCountry
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
@@ -183,7 +244,7 @@ Item {
                 ListView {
                     id: countryList
                     width: parent.width
-                    height: parent.height - (status.visible ? status.height + parent.spacing : 0)
+                    height: parent.height - (status.visible ? status.height + parent.spacing : 0) - (favouritesHeading.visible ? favouritesHeading.height + parent.spacing : 0)
                     visible: panel.pickingCountry
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
@@ -246,5 +307,22 @@ Item {
                 onClicked: backend.search(backend.queryMode, backend.queryValue, backend.offset + 50)
             }
         }
+    }
+    // The filter menu, above everything else; a click anywhere outside it closes it.
+    MouseArea {
+        anchors.fill: parent
+        visible: panel.filterOpen
+        z: 1
+        onClicked: panel.filterOpen = false
+    }
+    SearchFilter {
+        objectName: "search-filter-menu"
+        visible: panel.filterOpen
+        z: 2
+        readonly property point anchor: panel.filterOpen ? filterButton.mapToItem(panel, filterButton.width, filterButton.height) : Qt.point(0, 0)
+        x: Math.max(0, anchor.x - width); y: anchor.y + 4
+        api: panel.api
+        mode: panel.searchMode
+        onChosen: mode => panel.chooseMode(mode)
     }
 }

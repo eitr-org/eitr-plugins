@@ -77,13 +77,25 @@ ShellRoot {
                     }
                     if (fixture.find(panel, "globe-toggle")) throw new Error("The globe can no longer be hidden");
                     if (fixture.find(panel, "globe-hint").visible) throw new Error("Hint shown without a hovered country");
-                    // Search mode labels fit their button in every language.
+                    // The filter menu's choices fit it in every language, and choosing one sets the mode.
                     for (const locale of ["en", ...Object.keys(Strings.translations)]) {
-                        for (const label of ["By name", "By tag", "By country"]) {
+                        for (const label of ["Name", "Tag", "Country", "Search by"]) {
                             hintMetrics.text = Strings.tr(label, locale);
-                            if (hintMetrics.advanceWidth > 96 - 16) throw new Error("Search mode clipped: " + locale);
+                            if (hintMetrics.advanceWidth > 160 - 32) throw new Error("Filter choice clipped: " + locale);
                         }
                     }
+                    const menu = fixture.find(panel, "search-filter-menu");
+                    if (menu.visible) throw new Error("Filter menu open at start");
+                    panel.filterOpen = true;
+                    if (!menu.visible) throw new Error("Filter menu did not open");
+                    menu.chosen("tag");
+                    if (panel.filterOpen || panel.searchMode !== "tag") throw new Error("Filter choice failed");
+                    // Favourites shows a way back that returns to the list it replaced.
+                    panel.favoritesOnly = true;
+                    const backButton = fixture.find(panel, "favourites-back");
+                    if (!backButton || !backButton.visible) throw new Error("Favourites has no way back");
+                    backButton.clicked();
+                    if (panel.favoritesOnly) throw new Error("Back did not leave Favourites");
                     // By country: typing lists matching countries, and choosing one selects it.
                     panel.searchMode = "country";
                     panel.searchText = state.countries[0].name.slice(0, 3);

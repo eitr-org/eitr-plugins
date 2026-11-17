@@ -17,14 +17,15 @@ install packages or start a login service itself.
 - Drag the globe to rotate and scroll to zoom up to 4× towards the pointer. Countries
   show with their borders; hovering a country or its dot lightens it and names it with
   its station count, and clicking loads its stations and fills it in the accent.
-- Search globally by **name** or **tag**, or switch the button to **By country**: typing
-  lists the matching countries (Enter takes the first), the way to reach small ones.
-  Empty search returns to the chosen country. Results arrive in pages of 50;
-  **Previous** and **Next** change pages.
+- Search globally by **name** or **tag**, or by **country**: the filter button at the end
+  of the search field opens a small menu to choose. By country, typing lists the matching
+  countries (Enter takes the first), the way to reach small ones. Empty search returns to
+  the chosen country. Results arrive in pages of 50; **Previous** and **Next** change pages.
+- **Favourites**, beside the search field, shows saved stations, including when offline;
+  the back arrow beside its heading (or Escape, or the button again) returns to the list.
 - Click a station name to play: the globe turns to the station's own location when
   Radio Browser lists one, else to its country. Its star saves or removes a favourite.
-  **Favourites** shows saved stations, including when offline. Search filters
-  favourites locally.
+  Search filters favourites locally.
 - **Stop** is in the desktop's media controls (the bar and the Media panel). Closing the panel keeps audio playing.
   Reopening it restores current local player state. Adjust the **Radio Globe**
   stream in Eitr's Volume panel.
