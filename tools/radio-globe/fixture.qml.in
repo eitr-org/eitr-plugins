@@ -84,6 +84,10 @@ ShellRoot {
                             if (hintMetrics.advanceWidth > 160 - 32) throw new Error("Filter choice clipped: " + locale);
                         }
                     }
+                    // The filter button is what a click on it reaches, not the field it sits in.
+                    const filter = fixture.find(panel, "search-filter");
+                    if (filter.parent.childAt(filter.x + filter.width / 2, filter.y + filter.height / 2) !== filter)
+                        throw new Error("The search field covers the filter button");
                     const menu = fixture.find(panel, "search-filter-menu");
                     if (menu.visible) throw new Error("Filter menu open at start");
                     panel.filterOpen = true;

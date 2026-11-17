@@ -102,23 +102,29 @@ Item {
         Row {
             width: parent.width
             spacing: 6
-            Loader {
-                id: search
+            // The field, then its search glyph and filter button over it: siblings added after the
+            // field, so they sit on top of it and take their own clicks.
+            Item {
+                id: searchBox
                 width: parent.width - favourites.width - 6; height: 32
-                sourceComponent: panel.api.controls.textField
-                onLoaded: {
-                    item.placeholderText = Qt.binding(() => Strings.tr(({name: "Search stations by name", tag: "Search stations by tag", country: "Search countries"})[panel.searchMode]));
-                    // Room for the search glyph on the left and the filter button on the right.
-                    item.leftPadding = 32;
-                    item.rightPadding = 38;
-                    item.maximumLength = 100;
-                    item.textChanged.connect(() => { panel.searchText = item.text; debounce.restart(); });
-                    item.accepted.connect(() => {
-                        debounce.stop();
-                        // By country, Enter takes the first match.
-                        if (panel.pickingCountry && panel.countryMatches.length) panel.chooseCountry(panel.countryMatches[0]);
-                        else panel.runSearch();
-                    });
+                Loader {
+                    id: search
+                    anchors.fill: parent
+                    sourceComponent: panel.api.controls.textField
+                    onLoaded: {
+                        item.placeholderText = Qt.binding(() => Strings.tr(({name: "Search stations by name", tag: "Search stations by tag", country: "Search countries"})[panel.searchMode]));
+                        // Room for the search glyph on the left and the filter button on the right.
+                        item.leftPadding = 32;
+                        item.rightPadding = 38;
+                        item.maximumLength = 100;
+                        item.textChanged.connect(() => { panel.searchText = item.text; debounce.restart(); });
+                        item.accepted.connect(() => {
+                            debounce.stop();
+                            // By country, Enter takes the first match.
+                            if (panel.pickingCountry && panel.countryMatches.length) panel.chooseCountry(panel.countryMatches[0]);
+                            else panel.runSearch();
+                        });
+                    }
                 }
                 Text {
                     x: 10; anchors.verticalCenter: parent.verticalCenter
