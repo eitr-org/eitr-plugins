@@ -8,9 +8,11 @@ Item {
     required property var station
     property bool favorite: false
     property bool playing: false
+    // The last row has no divider under it.
+    property bool last: false
     signal playRequested()
     signal favoriteRequested()
-    implicitHeight: 64
+    implicitHeight: 70
     RadioAction {
         api: row.api
         width: parent.width - 38
@@ -48,5 +50,12 @@ Item {
         opacity: 0.58
         font.family: row.api.fontFamily
         font.pixelSize: 11
+    }
+    Rectangle {
+        visible: !row.last
+        x: 8; width: parent.width - 16; height: 1
+        anchors.bottom: parent.bottom
+        color: row.api.foreground
+        opacity: 0.12
     }
 }

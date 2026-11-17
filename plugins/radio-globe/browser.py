@@ -1,5 +1,6 @@
 """Radio Browser discovery, bounded HTTP reads and sanitized public records."""
 import json
+import math
 from pathlib import Path
 import random
 import re
@@ -44,9 +45,28 @@ def station(record):
         bitrate = max(0, min(10000, int(record.get('bitrate') or 0)))
     except (TypeError, ValueError):
         bitrate = 0
-    return dict(stationuuid=identifier, name=text(record.get('name')) or 'Unnamed station',
-                tags=text(record.get('tags')), codec=text(record.get('codec'), 24), bitrate=bitrate,
-                countrycode=text(record.get('countrycode'), 2), url=address, lastcheckok=1)
+    result = dict(stationuuid=identifier, name=text(record.get('name')) or 'Unnamed station',
+                  tags=text(record.get('tags')), codec=text(record.get('codec'), 24), bitrate=bitrate,
+                  countrycode=text(record.get('countrycode'), 2), url=address, lastcheckok=1)
+    # Radio Browser names them geo_lat/geo_long; saved favourites keep the checked location.
+    saved = record.get('location') if isinstance(record.get('location'), list) and len(record.get('location')) == 2 else [None, None]
+    place = coordinates(record.get('geo_lat'), record.get('geo_long')) or coordinates(*saved)
+    if place:
+        result['location'] = place
+    return result
+
+
+def coordinates(latitude, longitude):
+    """A station's own [latitude, longitude] when it lists a real one; Null Island (0, 0) is a placeholder."""
+    try:
+        latitude, longitude = float(latitude), float(longitude)
+    except (TypeError, ValueError):
+        return None
+    if not (math.isfinite(latitude) and math.isfinite(longitude)) or not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
+        return None
+    if latitude == 0 and longitude == 0:
+        return None
+    return [round(latitude, 2), round(longitude, 2)]
 
 
 def deadline(signum, frame):

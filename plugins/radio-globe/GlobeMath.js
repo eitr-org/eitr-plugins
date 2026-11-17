@@ -22,25 +22,66 @@ function unproject(x, y, centerLongitude, centerLatitude) {
     return [centerLongitude + relative / radians, latitude / radians];
 }
 
-// Each outline with its centre and reach (degrees), so drawing can skip rings out of view.
-function prepare(rings) {
+// One ring's centre and reach (degrees), so drawing can skip polygons out of view.
+function extent(ring) {
     const radians = Math.PI / 180;
-    return rings.map(ring => {
-        let x = 0, y = 0, z = 0;
-        for (let index = 0; index < ring.length; index += 2) {
-            const longitude = ring[index] * radians, latitude = ring[index + 1] * radians;
-            x += Math.cos(latitude) * Math.cos(longitude); y += Math.cos(latitude) * Math.sin(longitude); z += Math.sin(latitude);
+    let x = 0, y = 0, z = 0;
+    for (let index = 0; index < ring.length; index += 2) {
+        const longitude = ring[index] * radians, latitude = ring[index + 1] * radians;
+        x += Math.cos(latitude) * Math.cos(longitude); y += Math.cos(latitude) * Math.sin(longitude); z += Math.sin(latitude);
+    }
+    const length = Math.hypot(x, y, z) || 1;
+    x /= length; y /= length; z /= length;
+    let reach = 0;
+    for (let index = 0; index < ring.length; index += 2) {
+        const longitude = ring[index] * radians, latitude = ring[index + 1] * radians;
+        const dot = x * Math.cos(latitude) * Math.cos(longitude) + y * Math.cos(latitude) * Math.sin(longitude) + z * Math.sin(latitude);
+        reach = Math.max(reach, Math.acos(Math.max(-1, Math.min(1, dot))));
+    }
+    return {center: [Math.atan2(y, x) / radians, Math.asin(z) / radians], reach: reach / radians};
+}
+
+// Country shapes ({code: [[exterior, hole…], …]}) as a list of countries, each polygon with
+// its extent and longitude/latitude bounds for drawing and pointer tests.
+function prepare(shapes) {
+    return Object.keys(shapes).map(code => ({code: code, polygons: shapes[code].map(rings => {
+        const exterior = rings[0];
+        let west = 180, east = -180, south = 90, north = -90;
+        for (let index = 0; index < exterior.length; index += 2) {
+            west = Math.min(west, exterior[index]); east = Math.max(east, exterior[index]);
+            south = Math.min(south, exterior[index + 1]); north = Math.max(north, exterior[index + 1]);
         }
-        const length = Math.hypot(x, y, z) || 1;
-        x /= length; y /= length; z /= length;
-        let reach = 0;
-        for (let index = 0; index < ring.length; index += 2) {
-            const longitude = ring[index] * radians, latitude = ring[index + 1] * radians;
-            const dot = x * Math.cos(latitude) * Math.cos(longitude) + y * Math.cos(latitude) * Math.sin(longitude) + z * Math.sin(latitude);
-            reach = Math.max(reach, Math.acos(Math.max(-1, Math.min(1, dot))));
+        return Object.assign({rings: rings, bounds: [west, south, east, north]}, extent(exterior));
+    })}));
+}
+
+// Whether a place lies inside a prepared country (holes, such as Lesotho in South Africa, excluded).
+function contains(country, longitude, latitude) {
+    for (const polygon of country.polygons) {
+        const bounds = polygon.bounds;
+        if (longitude < bounds[0] || longitude > bounds[2] || latitude < bounds[1] || latitude > bounds[3]) continue;
+        let inside = false;
+        for (const ring of polygon.rings) {
+            for (let index = 0, previous = ring.length - 2; index < ring.length; previous = index, index += 2) {
+                const longitudeA = ring[index], latitudeA = ring[index + 1], longitudeB = ring[previous], latitudeB = ring[previous + 1];
+                if ((latitudeA > latitude) !== (latitudeB > latitude)
+                        && longitude < (longitudeB - longitudeA) * (latitude - latitudeA) / (latitudeB - latitudeA) + longitudeA)
+                    inside = !inside;
+            }
         }
-        return {points: ring, center: [Math.atan2(y, x) / radians, Math.asin(z) / radians], reach: reach / radians};
-    });
+        if (inside) return true;
+    }
+    return false;
+}
+
+// The country under a place, among those with a code; null over the sea.
+function countryAt(shapes, longitude, latitude) {
+    let wrapped = longitude;
+    while (wrapped > 180) wrapped -= 360;
+    while (wrapped < -180) wrapped += 360;
+    for (const country of shapes)
+        if (country.code !== "-" && contains(country, wrapped, latitude)) return country.code;
+    return "";
 }
 
 // Angle in degrees between two places.

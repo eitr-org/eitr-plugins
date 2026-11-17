@@ -94,7 +94,7 @@ if __name__ == '__main__':
     arguments = parser.parse_args()
     arguments.output.mkdir(parents=True, exist_ok=True)
     for theme in ('dark', 'light'):
-        for scenario in ('stations', 'offline', 'favorites', 'compact'):
+        for scenario in ('stations', 'offline', 'favorites'):
             capture = arguments.output / ('radio-globe-' + scenario + '-' + theme + '.png')
             render(capture, scenario, light=theme == 'light')
             print(capture.name + ': RADIO_RENDER_OK')

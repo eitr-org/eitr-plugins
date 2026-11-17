@@ -14,15 +14,17 @@ install packages or start a login service itself.
   which Eitr appends to the plugin title in its native bar tooltip; stopping
   clears the detail. The local status refresh is every 30 seconds,
   with another refresh on hover.
-- Drag the globe to rotate, scroll to zoom up to 4× towards the pointer, hover a dot for its country
-  and station count, and click to load that country's stations. The country
-  dropdown provides keyboard selection and reaches small or overlapping dots.
-- Search globally by **name** or **tag**. Empty search returns to the chosen
-  country. Results arrive in pages of 50; **Previous** and **Next** change pages.
-- Click a station name to play and its star to save or remove a favourite.
+- Drag the globe to rotate and scroll to zoom up to 4× towards the pointer. Countries
+  show with their borders; hovering a country or its dot lightens it and names it with
+  its station count, and clicking loads its stations and fills it in the accent.
+- Search globally by **name** or **tag**, or switch the button to **By country**: typing
+  lists the matching countries (Enter takes the first), the way to reach small ones.
+  Empty search returns to the chosen country. Results arrive in pages of 50;
+  **Previous** and **Next** change pages.
+- Click a station name to play: the globe turns to the station's own location when
+  Radio Browser lists one, else to its country. Its star saves or removes a favourite.
   **Favourites** shows saved stations, including when offline. Search filters
-  favourites locally. The ◎ button hides the globe to give the list more room;
-  its **Hide globe** / **Show globe** tooltip appears on hover or keyboard focus.
+  favourites locally.
 - **Stop** is in the desktop's media controls (the bar and the Media panel). Closing the panel keeps audio playing.
   Reopening it restores current local player state. Adjust the **Radio Globe**
   stream in Eitr's Volume panel.
@@ -85,20 +87,19 @@ Radio Browser receives your IP address and country/name/tag requests. A chosen
 station and its streaming/CDN providers receive your IP address and stream
 requests. HTTP streams are unencrypted. Favourites stay on this computer; the
 plugin sends no personal identifiers, analytics, votes or click-tracking calls.
-The land outline and country marker locations are bundled and need no map service.
+The country shapes and marker locations are bundled and need no map service.
 
 ## Map sources and licences
 
-Made with [Natural Earth](https://www.naturalearthdata.com/), **1:110m Land**.
-The bundled `data/land.json` is a small, simplified geometry-only derivative:
-68 exterior rings, rounded to 0.1 degrees, about 15 KiB. Its outline was obtained
-from a locally cached simplified Natural Earth derivative; no other plugin code
-is included. The [upstream GeoJSON](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_110m_land.geojson)
-can be imported with `tools/radio-globe/build-map.py` for a fresh simplification.
-Zoomed in past 1.5×, the globe draws `data/land-detail.json` instead: **1:50m Land**,
-822 rings simplified to 0.1 degrees, about 139 KiB, read the first time you zoom in.
-Import the [upstream GeoJSON](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_50m_land.geojson)
-with `build-map.py --land-detail`.
+Made with [Natural Earth](https://www.naturalearthdata.com/). `data/shapes.json`
+holds the country shapes of **1:110m Admin 0 – Countries**, simplified to 0.25 degrees
+(about 58 KiB); zoomed in past 1.5×, the globe draws `data/shapes-detail.json`, from
+**1:50m Admin 0 – Countries** simplified to 0.12 degrees (about 172 KiB), read the
+first time you zoom in. Both are geometry only, rounded to 0.1 degrees, keyed by ISO
+code (areas without one under `-`, drawn but not selectable). Import the
+[110m](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_110m_admin_0_countries.geojson)
+and [50m](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_50m_admin_0_countries.geojson)
+GeoJSON with `tools/radio-globe/build-map.py --countries-coarse … --countries …`.
 Natural Earth data is [public domain](https://www.naturalearthdata.com/about/terms-of-use/).
 The repository's MIT licence covers the plugin code, not a claim of ownership
 over these public-domain coordinates.
@@ -110,8 +111,8 @@ small territories that file does not list, the mean of their time zone locations
 from the public-domain [IANA timezone database](https://data.iana.org/time-zones/tz-link.html)
 `zone.tab`. Import the [upstream GeoJSON](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_50m_admin_0_countries.geojson)
 with `build-map.py --countries`. They are display locations, not country boundaries.
-Countries without a marker remain available in the dropdown.
-Small islands and some coastline detail are intentionally omitted at this scale.
+Countries without a marker remain reachable through **By country**.
+Small islands and some coastline detail are intentionally omitted at these scales.
 
 ## Verification and host limitations
 

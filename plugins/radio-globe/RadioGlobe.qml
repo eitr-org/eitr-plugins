@@ -13,23 +13,28 @@ Item {
     property real latitude: 15
     property real zoom: 1
     property bool interacted: false
+    // The country under the pointer (its dot or its shape) and the one whose stations show.
     property var hovered: null
-    property var outlines: []
-    // The finer outline, read the first time the globe is zoomed in.
-    property var detailOutlines: []
+    property string selectedCode: ""
+    property var shapes: []
+    // The finer shapes, read the first time the globe is zoomed in.
+    property var detailShapes: []
     property bool wantDetail: false
     readonly property real maximumZoom: 4
-    readonly property bool detailed: zoom >= 1.5 && detailOutlines.length > 0
+    readonly property bool detailed: zoom >= 1.5 && detailShapes.length > 0
+    readonly property var drawnShapes: detailed ? detailShapes : shapes
     readonly property color foreground: api.palette.foreground || api.foreground
     readonly property color accent: api.palette.color4 || api.accent
     readonly property real radius: Math.min(width, height) * 0.43 * zoom
     signal chosen(var country)
     // Turns the globe so a chosen country faces the viewer, the short way round.
     function faceCountry(country) {
-        if (!country || !country.location) return;
+        if (country && country.location) facePlace(country.location[0], country.location[1]);
+    }
+    function facePlace(placeLatitude, placeLongitude) {
         interacted = true;
-        const latitudeTarget = Math.max(-75, Math.min(75, country.location[0]));
-        let longitudeTarget = country.location[1];
+        const latitudeTarget = Math.max(-75, Math.min(75, placeLatitude));
+        let longitudeTarget = placeLongitude;
         while (longitudeTarget - longitude > 180) longitudeTarget -= 360;
         while (longitudeTarget - longitude < -180) longitudeTarget += 360;
         turn.stop();
@@ -51,24 +56,34 @@ Item {
         canvas.requestPaint();
     }
     onCountriesChanged: canvas.requestPaint()
-    onOutlinesChanged: canvas.requestPaint()
+    onShapesChanged: canvas.requestPaint()
+    onSelectedCodeChanged: canvas.requestPaint()
     onDetailedChanged: canvas.requestPaint()
     onHoveredChanged: canvas.requestPaint()
     onForegroundChanged: canvas.requestPaint()
     onAccentChanged: canvas.requestPaint()
     FileView {
-        path: Qt.resolvedUrl("data/land.json").toString().replace(/^file:\/\//, "")
+        path: Qt.resolvedUrl("data/shapes.json").toString().replace(/^file:\/\//, "")
         onLoaded: {
-            try { globe.outlines = GlobeMath.prepare(JSON.parse(text())); }
-            catch (error) { console.warn("Radio Globe land outline could not be read"); }
+            try { globe.shapes = GlobeMath.prepare(JSON.parse(text())); }
+            catch (error) { console.warn("Radio Globe country shapes could not be read"); }
         }
     }
     FileView {
-        path: globe.wantDetail ? Qt.resolvedUrl("data/land-detail.json").toString().replace(/^file:\/\//, "") : ""
+        path: globe.wantDetail ? Qt.resolvedUrl("data/shapes-detail.json").toString().replace(/^file:\/\//, "") : ""
         onLoaded: {
-            try { globe.detailOutlines = GlobeMath.prepare(JSON.parse(text())); }
-            catch (error) { console.warn("Radio Globe detailed land outline could not be read"); }
+            try { globe.detailShapes = GlobeMath.prepare(JSON.parse(text())); }
+            catch (error) { console.warn("Radio Globe detailed country shapes could not be read"); }
         }
+    }
+    // The country with stations under a pointer position: its dot first, then its shape.
+    function countryUnder(pointerX, pointerY) {
+        const dot = GlobeMath.hit(countries, pointerX, pointerY, radius, width / 2, height / 2, longitude, latitude);
+        if (dot) return dot;
+        const place = GlobeMath.unproject((pointerX - width / 2) / radius, (height / 2 - pointerY) / radius, longitude, latitude);
+        if (!place) return null;
+        const code = GlobeMath.countryAt(drawnShapes, place[0], place[1]);
+        return code ? countries.find(country => country.code === code) || null : null;
     }
     // Zooms by a factor, keeping the place under the pointer where it is (or the centre).
     function zoomBy(factor, pointerX, pointerY) {
@@ -118,12 +133,24 @@ Item {
                 }
                 context.stroke();
             }
-            // Zoomed in, only part of the front half shows; rings beyond it are skipped.
+            // A ring as a closed path; points behind the globe are pulled onto its edge, so a
+            // country across the horizon still fills up to it.
+            function ring(points) {
+                for (let index = 0; index < points.length; index += 2) {
+                    const point = project(points[index], points[index + 1]);
+                    let x = point[0], y = point[1];
+                    if (point[2] < 0) { const length = Math.hypot(x, y) || 1; x /= length; y /= length; }
+                    if (index === 0) context.moveTo(centerX + x * radius, centerY - y * radius);
+                    else context.lineTo(centerX + x * radius, centerY - y * radius);
+                }
+                context.closePath();
+            }
+            // Zoomed in, only part of the front half shows; polygons beyond it are skipped.
             const corner = Math.hypot(width, height) / 2;
             const reach = corner >= radius ? 90 : Math.asin(corner / radius) * 180 / Math.PI;
             context.beginPath();
             context.arc(centerX, centerY, radius, 0, Math.PI * 2);
-            context.fillStyle = Qt.alpha(globe.accent, 0.07);
+            context.fillStyle = Qt.alpha(globe.accent, 0.05);
             context.fill();
             context.strokeStyle = Qt.alpha(globe.foreground, 0.23);
             context.lineWidth = 1;
@@ -141,11 +168,38 @@ Item {
                 for (let latitude = -90; latitude <= 90; latitude += 3) points.push(longitude, latitude);
                 line(points);
             }
-            context.lineWidth = 1.4;
-            context.strokeStyle = Qt.alpha(globe.foreground, 0.5);
-            for (const ring of globe.detailed ? globe.detailOutlines : globe.outlines) {
-                if (GlobeMath.distance(ring.center[0], ring.center[1], globe.longitude, globe.latitude) > reach + ring.reach) continue;
-                line(ring.points);
+            // Land in a soft tint with thin borders; the hovered country lighter, the chosen one in the accent.
+            context.fillRule = Qt.OddEvenFill;
+            const hoveredCode = globe.hovered ? globe.hovered.code : "";
+            const highlighted = [];
+            for (const country of globe.drawnShapes) {
+                const emphasis = country.code === globe.selectedCode ? 2 : country.code === hoveredCode ? 1 : 0;
+                context.beginPath();
+                let drawn = false;
+                for (const polygon of country.polygons) {
+                    if (GlobeMath.distance(polygon.center[0], polygon.center[1], globe.longitude, globe.latitude) > Math.min(90, reach) + polygon.reach) continue;
+                    for (const points of polygon.rings) ring(points);
+                    drawn = true;
+                }
+                if (!drawn) continue;
+                if (emphasis) { highlighted.push([country, emphasis]); continue; }
+                context.fillStyle = Qt.alpha(globe.foreground, 0.09);
+                context.fill();
+                context.lineWidth = 0.8;
+                context.strokeStyle = Qt.alpha(globe.foreground, 0.32);
+                context.stroke();
+            }
+            // Drawn last so their whole border shows over the neighbours'.
+            for (const entry of highlighted) {
+                context.beginPath();
+                for (const polygon of entry[0].polygons)
+                    if (GlobeMath.distance(polygon.center[0], polygon.center[1], globe.longitude, globe.latitude) <= Math.min(90, reach) + polygon.reach)
+                        for (const points of polygon.rings) ring(points);
+                context.fillStyle = entry[1] === 2 ? Qt.alpha(globe.accent, 0.45) : Qt.alpha(globe.foreground, 0.18);
+                context.fill();
+                context.lineWidth = entry[1] === 2 ? 1.4 : 1;
+                context.strokeStyle = entry[1] === 2 ? globe.accent : Qt.alpha(globe.foreground, 0.55);
+                context.stroke();
             }
             for (const country of globe.countries) {
                 if (!country.location) continue;
@@ -187,7 +241,7 @@ Item {
                 distance += Math.abs(deltaX) + Math.abs(deltaY);
                 previousX = mouse.x; previousY = mouse.y;
             }
-            globe.hovered = GlobeMath.hit(globe.countries, mouse.x, mouse.y, globe.radius, width / 2, height / 2, globe.longitude, globe.latitude);
+            if (!pressed) globe.hovered = globe.countryUnder(mouse.x, mouse.y);
         }
         onClicked: mouse => { if (distance < 5 && globe.hovered) globe.chosen(globe.hovered); }
         onExited: globe.hovered = null
@@ -203,7 +257,8 @@ Item {
         anchors.bottom: parent.bottom
         width: parent.width
         horizontalAlignment: Text.AlignHCenter
-        text: globe.hovered ? globe.hovered.name + " · " + globe.hovered.count : Strings.tr("Drag · Scroll to zoom")
+        visible: !!globe.hovered
+        text: globe.hovered ? globe.hovered.name + " · " + globe.hovered.count : ""
         textFormat: Text.PlainText
         elide: Text.ElideRight
         color: globe.foreground

@@ -34,8 +34,8 @@
         "qml": "RadioPanel.qml",
         "surface": "panel",
         "header": false,
-        "width": 600,
-        "maxHeight": 620
+        "width": 720,
+        "maxHeight": 720
       }
     ]
   }

@@ -58,13 +58,11 @@ ShellRoot {
             id: sequence
             property int step: 0
             property int closedTicks: 0
-            property int tooltipTicks: 0
             interval: 250; repeat: true; running: true
             onTriggered: {
                 const state = fixture.find(panel, "radio-backend");
                 if (!state || state.countries.length === 0) return;
                 const retry = fixture.find(panel, "retry");
-                const toggle = fixture.find(panel, "globe-toggle");
                 if (step === 0) {
                     if (api.detail !== Strings.tr("Now playing") + " · Rádio Aurora") throw new Error("Playing detail missing");
                     api.dataText = '{"playing":{"station":{"name":"Next station"}}}';
@@ -77,17 +75,23 @@ ShellRoot {
                     for (const child of [...bar.children, ...bar.resources]) {
                         if (child.toString().indexOf("ToolTip") !== -1) throw new Error("Duplicate bar tooltip");
                     }
-                    const tip = toggle.resources.find(resource => resource.objectName === "action-tooltip");
-                    if (!tip || tip.text !== Strings.tr("Hide globe")) throw new Error("Globe tooltip missing");
-                    panel.showGlobe = false;
-                    if (tip.text !== Strings.tr("Show globe")) throw new Error("Globe tooltip stale");
-                    panel.showGlobe = true;
-                    toggle.item.forceActiveFocus();
-                    const hint = fixture.find(panel, "globe-hint");
+                    if (fixture.find(panel, "globe-toggle")) throw new Error("The globe can no longer be hidden");
+                    if (fixture.find(panel, "globe-hint").visible) throw new Error("Hint shown without a hovered country");
+                    // Search mode labels fit their button in every language.
                     for (const locale of ["en", ...Object.keys(Strings.translations)]) {
-                        hintMetrics.text = Strings.tr("Drag · Scroll to zoom", locale);
-                        if (hintMetrics.advanceWidth > hint.width) throw new Error("Globe hint clipped: " + locale);
+                        for (const label of ["By name", "By tag", "By country"]) {
+                            hintMetrics.text = Strings.tr(label, locale);
+                            if (hintMetrics.advanceWidth > 96 - 16) throw new Error("Search mode clipped: " + locale);
+                        }
                     }
+                    // By country: typing lists matching countries, and choosing one selects it.
+                    panel.searchMode = "country";
+                    panel.searchText = state.countries[0].name.slice(0, 3);
+                    if (!panel.pickingCountry || !panel.countryMatches.some(country => country.code === state.countries[0].code))
+                        throw new Error("Country search failed");
+                    panel.chooseCountry(panel.countryMatches[0]);
+                    if (panel.pickingCountry || panel.countryCode === "") throw new Error("Country not chosen");
+                    panel.searchMode = "name";
                     panel.chooseCountry(state.countries[0]);
                     const front = GlobeMath.project(0, 0, 0, 0);
                     const back = GlobeMath.project(180, 0, 0, 0);
@@ -96,8 +100,12 @@ ShellRoot {
                     const place = GlobeMath.unproject(seen[0], seen[1], -30, 10);
                     if (Math.abs(place[0] + 49.5) > 0.01 || Math.abs(place[1] + 12.1) > 0.01 || GlobeMath.unproject(1, 1, 0, 0) !== null)
                         throw new Error("Unprojection failed");
-                    const rings = GlobeMath.prepare([[0, 0, 10, 0, 10, 10, 0, 10, 0, 0]]);
-                    if (rings[0].reach < 5 || rings[0].reach > 9 || GlobeMath.distance(0, 0, 90, 0) !== 90) throw new Error("Ring preparation failed");
+                    // A square country with a square hole: inside, in the hole, and outside.
+                    const shapes = GlobeMath.prepare({AA: [[[0, 0, 10, 0, 10, 10, 0, 10, 0, 0], [4, 4, 6, 4, 6, 6, 4, 6, 4, 4]]], "-": [[[20, 0, 30, 0, 30, 10, 20, 10, 20, 0]]]});
+                    const square = shapes[0].polygons[0];
+                    if (square.reach < 5 || square.reach > 9 || GlobeMath.distance(0, 0, 90, 0) !== 90) throw new Error("Shape preparation failed");
+                    if (GlobeMath.countryAt(shapes, 2, 2) !== "AA" || GlobeMath.countryAt(shapes, 5, 5) !== "" || GlobeMath.countryAt(shapes, 25, 5) !== ""
+                        || GlobeMath.countryAt(shapes, 362, 2) !== "AA") throw new Error("Country shape hit test failed");
                     const targets = [{code:"AA", location:[0,0], count:10}, {code:"ZZ", location:[0,180], count:100}];
                     if (GlobeMath.hit(targets, 100, 100, 80, 100, 100, 0, 0).code !== "AA"
                         || GlobeMath.hit(targets, 0, 0, 80, 100, 100, 0, 0) !== null) throw new Error("Country hit test failed");
@@ -120,10 +128,6 @@ ShellRoot {
                 }
                 if (step === 2) {
                     if (state.queryMode !== "tag" || state.stations.length !== 3) throw new Error("Search coalescing failed");
-                    const tip = toggle.resources.find(resource => resource.objectName === "action-tooltip");
-                    if (!tip.visible && tooltipTicks++ < 4) return;
-                    if (!tip.visible) throw new Error("Globe tooltip missing on keyboard focus");
-                    panel.forceActiveFocus();
                     state.search("name", "failure", 0);
                     step++; return;
                 }
@@ -139,7 +143,6 @@ ShellRoot {
                 if (step === 4) {
                     if (fixture.scenario !== "offline" && (retry.visible || state.stations.length !== 3)) throw new Error("Loading recovery failed");
                     if (fixture.scenario === "favorites") panel.favoritesOnly = true;
-                    if (fixture.scenario === "compact") panel.showGlobe = false;
                     api.observed = false;
                     console.log("RADIO_PANEL_CLOSED", Date.now() / 1000);
                     step++; return;

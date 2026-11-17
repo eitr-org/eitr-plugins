@@ -9,15 +9,18 @@ Item {
     id: panel
     required property var api
     property bool favoritesOnly: false
-    property bool showGlobe: true
     property string searchText: ""
     property string searchMode: "name"
     property string countryCode: ""
     property string countryName: ""
     property bool reduceMotion: true
+    // By country, typing lists the matching countries; choosing one shows its stations.
+    readonly property bool pickingCountry: searchMode === "country" && searchText.trim() !== "" && !favoritesOnly
+    readonly property var countryMatches: pickingCountry ? backend.countries.filter(country =>
+        country.name.toLowerCase().indexOf(searchText.trim().toLowerCase()) !== -1) : []
     readonly property var displayed: favoritesOnly ? backend.favorites.filter(station =>
         !searchText.trim() || (searchMode === "tag" ? station.tags : station.name).toLowerCase().indexOf(searchText.trim().toLowerCase()) !== -1) : backend.stations
-    implicitWidth: 600
+    implicitWidth: 720
     implicitHeight: body.implicitHeight
     RadioBackend { id: backend; api: panel.api }
     FileView {
@@ -40,8 +43,13 @@ Item {
         debounce.stop();
         backend.search("country", country.code, 0);
     }
+    // Turns the globe to a station as it starts: its own place, else its country's dot.
+    function faceStation(station) {
+        if (station.location) globe.facePlace(station.location[0], station.location[1]);
+        else globe.faceCountry(backend.countries.find(country => country.code === station.countrycode));
+    }
     function runSearch() {
-        if (favoritesOnly) return;
+        if (favoritesOnly || searchMode === "country") return;
         if (searchText.trim()) backend.search(searchMode, searchText.trim(), 0);
         else if (countryCode) backend.search("country", countryCode, 0);
         else { backend.wanted = ""; backend.stations = []; }
@@ -54,7 +62,7 @@ Item {
         Row {
             width: parent.width; spacing: 6
             Text {
-                width: parent.width - favourites.width - globeToggle.width - 12 - (retry.visible ? retry.width + 6 : 0); height: 32
+                width: parent.width - favourites.width - 6 - (retry.visible ? retry.width + 6 : 0); height: 32
                 verticalAlignment: Text.AlignVCenter
                 text: Strings.tr("Radio Globe")
                 color: panel.api.foreground
@@ -66,14 +74,6 @@ Item {
                 api: panel.api; width: 110
                 text: Strings.tr("Favourites"); selected: panel.favoritesOnly
                 onClicked: { panel.favoritesOnly = !panel.favoritesOnly; if (!panel.favoritesOnly) panel.runSearch(); }
-            }
-            RadioAction {
-                id: globeToggle
-                objectName: "globe-toggle"
-                api: panel.api; width: 32; icon: true; text: panel.showGlobe ? "\u{F01E7}" : "\u{F01E8}"
-                description: Strings.tr(panel.showGlobe ? "Hide globe" : "Show globe")
-                selected: panel.showGlobe
-                onClicked: panel.showGlobe = !panel.showGlobe
             }
             RadioAction {
                 id: retry
@@ -96,52 +96,46 @@ Item {
                     item.placeholderText = Strings.tr("Search stations");
                     item.maximumLength = 100;
                     item.textChanged.connect(() => { panel.searchText = item.text; debounce.restart(); });
-                    item.accepted.connect(() => { debounce.stop(); panel.runSearch(); });
+                    item.accepted.connect(() => {
+                        debounce.stop();
+                        // By country, Enter takes the first match.
+                        if (panel.pickingCountry && panel.countryMatches.length) panel.chooseCountry(panel.countryMatches[0]);
+                        else panel.runSearch();
+                    });
                 }
             }
             RadioAction {
                 id: modeButton
-                api: panel.api; width: 82
-                text: Strings.tr(panel.searchMode === "name" ? "By name" : "By tag")
-                onClicked: { panel.searchMode = panel.searchMode === "name" ? "tag" : "name"; debounce.restart(); }
+                api: panel.api; width: 96
+                text: Strings.tr(({name: "By name", tag: "By tag", country: "By country"})[panel.searchMode])
+                onClicked: { panel.searchMode = ({name: "tag", tag: "country", country: "name"})[panel.searchMode]; debounce.restart(); }
             }
         }
         Row {
             id: explorer
-            width: parent.width; height: Math.max(340, stationColumn.implicitHeight)
-            spacing: panel.showGlobe ? 12 : 0
+            width: parent.width; height: 400
+            spacing: 12
             RadioGlobe {
                 id: globe
                 api: panel.api
-                width: panel.showGlobe ? Math.floor(explorer.width * 0.5) : 0
+                width: Math.floor(explorer.width * 0.5)
                 height: explorer.height
-                visible: panel.showGlobe
                 countries: backend.countries
+                selectedCode: panel.countryCode
                 reduceMotion: panel.reduceMotion
                 onChosen: country => panel.chooseCountry(country)
             }
             Column {
                 id: stationColumn
-                width: panel.showGlobe ? explorer.width - Math.floor(explorer.width * 0.5) - 12 : explorer.width
+                width: explorer.width - Math.floor(explorer.width * 0.5) - 12
+                height: explorer.height
                 spacing: 4
-                Loader {
-                    width: parent.width
-                    sourceComponent: panel.api.controls.dropdown
-                    onLoaded: {
-                        item.floatingLabel = Strings.tr("Country");
-                        item.helperText = Strings.tr("Choose a dot or a country");
-                        item.choices = Qt.binding(() => backend.countries.map(country => ({value: country.code, label: country.name + " · " + country.count})));
-                        item.current = Qt.binding(() => panel.countryCode);
-                        item.chosen.connect(value => {
-                            const country = backend.countries.find(entry => entry.code === value);
-                            if (country) panel.chooseCountry(country);
-                        });
-                    }
-                }
                 Text {
                     id: status
                     width: parent.width
-                    text: backend.error ? Strings.tr("Request failed") : backend.stale ? Strings.tr("Offline · showing saved countries") : backend.busy ? Strings.tr("Loading…") : panel.favoritesOnly ? Strings.tr("Favourites") : panel.searchText.trim() ? Strings.tr("Search results") : panel.countryName || Strings.tr("Choose a country or search")
+                    // Only when there is something to say: nothing chosen and nothing typed shows nothing.
+                    visible: text !== ""
+                    text: backend.error ? Strings.tr("Request failed") : backend.stale ? Strings.tr("Offline · showing saved countries") : backend.busy ? Strings.tr("Loading…") : panel.favoritesOnly ? Strings.tr("Favourites") : panel.pickingCountry ? "" : panel.searchText.trim() ? Strings.tr("Search results") : panel.countryName
                     textFormat: Text.PlainText
                     elide: Text.ElideRight
                     color: panel.api.foreground
@@ -153,19 +147,22 @@ Item {
                 ListView {
                     id: list
                     width: parent.width
-                    height: 236
+                    height: parent.height - (status.visible ? status.height + parent.spacing : 0)
+                    visible: !panel.pickingCountry
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
                     model: panel.displayed
                     ScrollBar.vertical: ScrollBar {}
                     delegate: StationRow {
                         required property var modelData
+                        required property int index
                         width: list.width - 8
                         api: panel.api; station: modelData
                         favorite: backend.isFavorite(modelData)
                         playing: backend.playing !== null && backend.playing.station.stationuuid === modelData.stationuuid
                         enabled: !backend.busy
-                        onPlayRequested: backend.action("play", modelData)
+                        last: index === list.count - 1
+                        onPlayRequested: { backend.action("play", modelData); panel.faceStation(modelData); }
                         onFavoriteRequested: backend.action("favorite", modelData)
                     }
                     Text {
@@ -173,6 +170,45 @@ Item {
                         width: parent.width
                         visible: panel.displayed.length === 0 && !backend.busy
                         text: Strings.tr(panel.favoritesOnly ? "No saved favourites yet" : "No stations to show")
+                        textFormat: Text.PlainText
+                        wrapMode: Text.Wrap
+                        horizontalAlignment: Text.AlignHCenter
+                        color: panel.api.foreground
+                        opacity: 0.6
+                        font.family: panel.api.fontFamily
+                        font.pixelSize: 13
+                    }
+                }
+                // By country: the countries whose name matches what is typed.
+                ListView {
+                    id: countryList
+                    width: parent.width
+                    height: parent.height - (status.visible ? status.height + parent.spacing : 0)
+                    visible: panel.pickingCountry
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    model: panel.countryMatches
+                    ScrollBar.vertical: ScrollBar {}
+                    delegate: Item {
+                        id: countryRow
+                        required property var modelData
+                        required property int index
+                        width: countryList.width - 8
+                        height: 36
+                        RadioAction {
+                            api: panel.api
+                            width: parent.width; height: 28
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: countryRow.modelData.name + " · " + countryRow.modelData.count
+                            textAlignment: Text.AlignLeft
+                            onClicked: panel.chooseCountry(countryRow.modelData)
+                        }
+                    }
+                    Text {
+                        anchors.centerIn: parent
+                        width: parent.width
+                        visible: panel.countryMatches.length === 0
+                        text: Strings.tr("No countries match")
                         textFormat: Text.PlainText
                         wrapMode: Text.Wrap
                         horizontalAlignment: Text.AlignHCenter
@@ -209,16 +245,6 @@ Item {
                 enabled: !backend.busy && backend.more
                 onClicked: backend.search(backend.queryMode, backend.queryValue, backend.offset + 50)
             }
-        }
-        Text {
-            width: parent.width
-            text: Strings.tr("Station lists: Radio Browser. Streams: each station.")
-            textFormat: Text.PlainText
-            wrapMode: Text.Wrap
-            color: panel.api.foreground
-            opacity: 0.58
-            font.family: panel.api.fontFamily
-            font.pixelSize: 11
         }
     }
 }
