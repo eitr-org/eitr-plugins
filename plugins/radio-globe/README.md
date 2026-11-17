@@ -99,10 +99,14 @@ Natural Earth data is [public domain](https://www.naturalearthdata.com/about/ter
 The repository's MIT licence covers the plugin code, not a claim of ownership
 over these public-domain coordinates.
 
-`data/countries.json` contains 247 representative marker positions derived from
-the public-domain [IANA timezone database](https://data.iana.org/time-zones/tz-link.html)
-`zone.tab`. They are display locations, not country boundaries or precise
-centroids. Countries without a marker remain available in the dropdown.
+`data/countries.json` holds 250 marker positions: Natural Earth's label point for
+each country in **1:50m Admin 0 – Countries** (a spot chosen to sit well inside it;
+where several features share a code, the one with the most land), and for the few
+small territories that file does not list, the mean of their time zone locations
+from the public-domain [IANA timezone database](https://data.iana.org/time-zones/tz-link.html)
+`zone.tab`. Import the [upstream GeoJSON](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_50m_admin_0_countries.geojson)
+with `build-map.py --countries`. They are display locations, not country boundaries.
+Countries without a marker remain available in the dropdown.
 Small islands and some coastline detail are intentionally omitted at this scale.
 
 ## Verification and host limitations
@@ -112,7 +116,7 @@ Run `bash tools/check.sh` for offline helper and QML render tests. Run
 dark/light panel and bar previews with fake stations and isolated XDG paths.
 No network, audio, desktop services or live configuration is changed by those
 fixtures. `tools/radio-globe/build-map.py --check` validates bundled geometry
-and checks the marker projection against the local IANA `zone.tab`.
+and checks that every country in the local IANA `zone.tab` has a marker.
 
 The current host limits a panel viewport to 360 px high; it supplies scrolling
 when this content needs more room. The shared button's text mode is used for
