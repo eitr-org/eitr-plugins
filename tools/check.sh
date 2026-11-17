@@ -9,6 +9,10 @@ python3 -m unittest discover -s tests -v
 python3 -m compileall -q plugins tests
 if command -v node >/dev/null; then
   node tests/test_world_clock_state.js
+  node tests/test_widget_helpers.js
+fi
+if [[ -x /usr/lib/qt6/bin/qmllint ]]; then
+  /usr/lib/qt6/bin/qmllint plugins/notes/*.qml plugins/hardware/*.qml
 fi
 if command -v shellcheck >/dev/null; then
   shellcheck tools/check.sh

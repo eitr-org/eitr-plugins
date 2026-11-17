@@ -1,7 +1,10 @@
 """Offline tests: no live networking, home writes or privileged commands."""
 import importlib.util
 import json
+import os
 from pathlib import Path
+import shutil
+import subprocess
 import sys
 import tempfile
 import types
@@ -224,7 +227,41 @@ class ManifestTests(unittest.TestCase):
                 result = eitr_plugin_review.check(folder)
                 self.assertIn('Offline review transport verified.', result)
                 self.assertIn('action.py', assistant.call_args.args[0])
-        self.assertEqual(len(eitr_plugin_manifest.repository_plugins(ROOT)), 6)
+        self.assertEqual(len(eitr_plugin_manifest.repository_plugins(ROOT)), 8)
+
+    def test_notes_and_hardware_manifests_limits_and_review(self):
+        import eitr_plugin_install
+        import eitr_plugin_manifest
+        import eitr_plugin_review
+
+        notes = eitr_plugin_manifest.manifest(ROOT / 'plugins/notes')
+        self.assertEqual(notes['schemaVersion'], 2)
+        self.assertEqual(notes['id'], 'notes')
+        self.assertEqual(notes.get('capabilities', []), [])
+        note_widget, = notes['ui']['widgets']
+        self.assertEqual((note_widget['id'], note_widget['surface']), ('note', 'none'))
+        self.assertEqual((note_widget['defaultWidth'], note_widget['defaultHeight']), (260, 240))
+        self.assertEqual(eitr_plugin_install.live_flags(notes), [])
+
+        hardware = eitr_plugin_manifest.manifest(ROOT / 'plugins/hardware')
+        self.assertEqual(hardware['schemaVersion'], 2)
+        self.assertEqual(hardware['id'], 'hardware')
+        self.assertEqual(hardware['capabilities'], ['hardware'])
+        hw_widget, = hardware['ui']['widgets']
+        self.assertEqual((hw_widget['id'], hw_widget['surface']), ('hardware', 'panel'))
+        self.assertEqual((hw_widget['defaultWidth'], hw_widget['defaultHeight']), (480, 280))
+        self.assertEqual((hw_widget['minWidth'], hw_widget['minHeight']), (260, 88))
+        flags = eitr_plugin_install.live_flags(hardware)
+        self.assertTrue(any('hardware' in flag.lower() for flag in flags), flags)
+
+        for plugin_id in ('notes', 'hardware'):
+            folder = ROOT / 'plugins' / plugin_id
+            with tempfile.TemporaryDirectory() as temporary:
+                records = eitr_plugin_review.snapshot(folder, Path(temporary) / 'repository')
+                prompt = eitr_plugin_review.prompt(records, '.')
+                self.assertIn('eitr-plugin.json', prompt)
+            for qml in folder.glob('*.qml'):
+                self.assertLessEqual(len(qml.read_text().splitlines()), 400, qml.name)
 
     def test_tailscale_declares_bar_item_panel_and_receiver_service(self):
         import eitr_plugin_manifest
@@ -240,6 +277,254 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(manifest['service'], {'run': 'receive.py'})
         for qml in (ROOT / 'plugins/tailscale').glob('*.qml'):
             self.assertLessEqual(len(qml.read_text().splitlines()), 400, qml.name)
+
+
+class WidgetRenderAndHostTests(unittest.TestCase):
+    def test_js_helpers_if_node_available(self):
+        node = shutil.which('node')
+        if not node:
+            self.skipTest('node not available')
+        result = subprocess.run(
+            [node, str(ROOT / 'tests/test_widget_helpers.js')],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+
+    def test_offscreen_widget_renders_and_missing_telemetry(self):
+        if not shutil.which('quickshell'):
+            self.skipTest('quickshell not available')
+        sys.path.insert(0, str(ROOT / 'tests'))
+        import render_widgets
+        with tempfile.TemporaryDirectory() as tmp:
+            scenes = render_widgets.default_scenes(tmp)
+            scenes.append({
+                'name': 'hardware-missing-gpu.png',
+                'kind': 'hardware',
+                'theme': 'dark',
+                'plugin_id': 'hardware',
+                'entry_id': 'hardware',
+                'title': 'Hardware',
+                'surface': 'panel',
+                'widget_width': 480,
+                'widget_height': 280,
+                'saved': {'mode': 'detailed'},
+                'hardware': {
+                    'status': 'ready',
+                    'error': '',
+                    'identity': {},
+                    'sections': [
+                        {
+                            'title': 'CPU',
+                            'name': 'Intel Core i5',
+                            'usage': 41,
+                            'rows': [['Cores / threads', '8 / 12'], ['Frequency / temperature', 'Unavailable']],
+                        },
+                        {
+                            'title': 'GPU',
+                            'name': 'GPU telemetry unavailable',
+                            'usage': None,
+                            'rows': [],
+                        },
+                        {
+                            'title': 'RAM',
+                            'name': 'Memory',
+                            'usage': 50,
+                            'rows': [['Used / total', '8.0 GiB / 16.0 GiB']],
+                        },
+                        {
+                            'title': 'Storage',
+                            'name': 'Root',
+                            'usage': 30,
+                            'rows': [['Used / total', '75 GiB / 250 GiB']],
+                        },
+                    ],
+                    'network': {'status': 'loading', 'download': None, 'upload': None, 'interfaces': [], 'connection': ''},
+                },
+                'out_path': str(Path(tmp) / 'hardware-missing-gpu.png'),
+            })
+            for scene in scenes:
+                out = render_widgets.render_scene(scene)
+                header = out.read_bytes()[:8]
+                self.assertEqual(header, b'\x89PNG\r\n\x1a\n', scene['name'])
+
+    def test_widget_contract_menus_persistence_and_escape(self):
+        quickshell = shutil.which('quickshell')
+        if not quickshell:
+            self.skipTest('quickshell not available')
+        sys.path.insert(0, str(ROOT / 'tests'))
+        import render_widgets
+        secret_note = 'Private note text should stay out of logs'
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            harness = tmp_path / 'contract_harness.qml'
+            notes_uri = render_widgets.NOTES_QML.as_uri()
+            hw_uri = render_widgets.HARDWARE_QML.as_uri()
+            hw_sample = json.dumps(render_widgets.SAMPLE_HARDWARE)
+            harness.write_text(f"""import QtQuick
+import QtQuick.Window
+import Quickshell
+
+ShellRoot {{
+    Window {{
+        width: 520
+        height: 320
+        visible: true
+
+        QtObject {{
+            id: notesApi
+            property string pluginId: "notes"
+            property string entryId: "note"
+            property string instance: "note-a"
+            property string surface: "none"
+            property string title: "Note"
+            property string detail: ""
+            property bool compact: false
+            property bool editing: false
+            property bool acceptsKeyboard: false
+            property bool keyboardFocus: false
+            property color background: "#161821"
+            property color foreground: "#ebeef5"
+            property color accent: "#d5b55c"
+            property var palette: ({{ surface: "#1c1f2b" }})
+            property real radius: 12
+            property real spacing: 8
+            property string fontFamily: "sans-serif"
+            property real headingSize: 16
+            property real bodySize: 13
+            property real captionSize: 11
+            property var instanceData: ({{ version: 1, text: "{secret_note}", color: "blue" }})
+            property bool instanceDataReady: true
+            property var savedPayloads: []
+            property var menuEntries: []
+            property int releasedCount: 0
+            signal instanceDataLoaded()
+            signal keyboardReleased()
+            signal menuTriggered(string id)
+            function setMenu(entries) {{ menuEntries = entries || []; }}
+            function saveInstanceData(value) {{
+                const copy = savedPayloads.slice();
+                copy.push(value);
+                savedPayloads = copy;
+            }}
+            function releaseKeyboard() {{
+                releasedCount += 1;
+                keyboardFocus = false;
+                keyboardReleased();
+            }}
+        }}
+
+        QtObject {{
+            id: hwApi
+            property string pluginId: "hardware"
+            property string entryId: "hardware"
+            property string instance: "hw-a"
+            property string surface: "panel"
+            property string title: "Hardware"
+            property string detail: ""
+            property bool compact: false
+            property bool editing: false
+            property color background: "#161821"
+            property color foreground: "#ebeef5"
+            property color accent: "#d5b55c"
+            property var palette: ({{ surface: "#1c1f2b" }})
+            property real radius: 12
+            property real spacing: 8
+            property string fontFamily: "sans-serif"
+            property real headingSize: 16
+            property real bodySize: 13
+            property real captionSize: 11
+            property var instanceData: null
+            property bool instanceDataReady: true
+            property var hardware: ({hw_sample})
+            property var savedPayloads: []
+            property var menuEntries: []
+            signal instanceDataLoaded()
+            signal menuTriggered(string id)
+            function setMenu(entries) {{ menuEntries = entries || []; }}
+            function saveInstanceData(value) {{
+                const copy = savedPayloads.slice();
+                copy.push(value);
+                savedPayloads = copy;
+            }}
+        }}
+
+        Loader {{
+            id: notesLoader
+            width: 260
+            height: 240
+            Component.onCompleted: setSource("{notes_uri}", {{ api: notesApi }})
+        }}
+
+        Loader {{
+            id: hwLoader
+            width: 480
+            height: 280
+            Component.onCompleted: setSource("{hw_uri}", {{ api: hwApi }})
+        }}
+
+        Timer {{
+            interval: 120
+            running: true
+            repeat: false
+            onTriggered: {{
+                notesApi.menuTriggered("green");
+                notesApi.releaseKeyboard();
+                hwApi.menuTriggered("compact");
+                const noteMenuIds = notesApi.menuEntries.map(entry => entry.id).join(",");
+                const hwMenuIds = hwApi.menuEntries.map(entry => entry.id).join(",");
+                console.log("CHECK:" + JSON.stringify({{
+                    noteLoaded: notesLoader.status === Loader.Ready,
+                    noteAcceptsKeyboard: notesApi.acceptsKeyboard,
+                    noteReleased: notesApi.releasedCount,
+                    noteMenuIds: noteMenuIds,
+                    noteSavedColor: notesApi.savedPayloads.length > 0 ? notesApi.savedPayloads[notesApi.savedPayloads.length - 1].color : "",
+                    noteTextMatched: notesApi.savedPayloads.length > 0 && notesApi.savedPayloads[notesApi.savedPayloads.length - 1].text === "{secret_note}",
+                    hwLoaded: hwLoader.status === Loader.Ready,
+                    hwMenuIds: hwMenuIds,
+                    hwSavedMode: hwApi.savedPayloads.length > 0 ? hwApi.savedPayloads[hwApi.savedPayloads.length - 1].mode : ""
+                }}));
+                Qt.quit();
+            }}
+        }}
+    }}
+}}
+""", encoding='utf-8')
+            env = os.environ.copy()
+            env['QT_QPA_PLATFORM'] = 'offscreen'
+            env['HOME'] = str(tmp_path / 'home')
+            env['XDG_CONFIG_HOME'] = str(tmp_path / 'config')
+            env['XDG_DATA_HOME'] = str(tmp_path / 'data')
+            env['XDG_STATE_HOME'] = str(tmp_path / 'state')
+            env['XDG_RUNTIME_DIR'] = str(tmp_path / 'runtime')
+            for key in ('HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_RUNTIME_DIR'):
+                Path(env[key]).mkdir(parents=True, exist_ok=True)
+            os.chmod(env['XDG_RUNTIME_DIR'], 0o700)
+            result = subprocess.run(
+                [quickshell, '-p', str(harness), '--no-duplicate'],
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=20,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+            combined = result.stdout + '\n' + result.stderr
+            self.assertNotIn(secret_note, combined)
+            marker = [line for line in combined.splitlines() if 'CHECK:' in line]
+            self.assertTrue(marker, combined)
+            payload = json.loads(marker[-1].split('CHECK:', 1)[1])
+            self.assertTrue(payload['noteLoaded'])
+            self.assertTrue(payload['noteAcceptsKeyboard'])
+            self.assertEqual(payload['noteReleased'], 1)
+            self.assertEqual(payload['noteMenuIds'], 'yellow,green,blue,pink,purple,theme')
+            self.assertEqual(payload['noteSavedColor'], 'green')
+            self.assertTrue(payload['noteTextMatched'])
+            self.assertTrue(payload['hwLoaded'])
+            self.assertEqual(payload['hwMenuIds'], 'compact,detailed')
+            self.assertEqual(payload['hwSavedMode'], 'compact')
 
 
 if __name__ == '__main__':

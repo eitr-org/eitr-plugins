@@ -10,6 +10,8 @@ Official plugins for [Eitr](https://github.com/eitr-org/eitr), reviewed by the E
 | [Tailscale](plugins/tailscale) | Tailscale on the bar: connect, see your devices, copy their addresses and send or receive files |
 | [World clock](plugins/world-clock) | Offline city times immediately before the centred bar clock |
 | [Phone Link](plugins/phone-link) | Pair phones through KDE Connect, send files and clipboard text, and find your phone |
+| [Notes](plugins/notes) | Sticky notes on your desktop, saved separately per note copy |
+| [Hardware](plugins/hardware) | Live CPU, GPU, RAM, root storage and network speeds on your desktop in Compact or Detailed layout |
 
 ## Install
 

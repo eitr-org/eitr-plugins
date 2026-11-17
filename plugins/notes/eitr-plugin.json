@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 2,
+  "id": "notes",
+  "name": "Notes",
+  "author": "The Eitr project",
+  "version": "0.1.0",
+  "description": "Sticky notes on your desktop, saved per note",
+  "rows": [],
+  "ui": {
+    "widgets": [
+      {
+        "id": "note",
+        "title": "Note",
+        "qml": "Notes.qml",
+        "minWidth": 160,
+        "minHeight": 140,
+        "defaultWidth": 260,
+        "defaultHeight": 240,
+        "surface": "none"
+      }
+    ]
+  },
+  "icon": "icon.svg"
+}
