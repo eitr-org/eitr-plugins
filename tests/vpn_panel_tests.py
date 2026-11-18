@@ -115,6 +115,25 @@ class NetworkManagerVpnStatusTests(unittest.TestCase):
         self.assertEqual(summary['profileCount'], 0)
         self.assertEqual(summary['profiles'], [])
 
+    def test_activating_vpn_is_not_connected_and_shows_its_own_device(self):
+        # Real nmcli output: ACTIVE is "yes" while OpenVPN is still activating over enp0s2.
+        raw = ('ca7841a2-908f-4f8f-9c01-ea5325d616f3:vpn:yes:activating:enp0s2:corp\n'
+               '35389c64-bcd2-32c5-a5d9-a6a58e9655dc:802-3-ethernet:yes:activated:enp0s2:Wired connection 1\n')
+        details = ('connection.uuid:ca7841a2-908f-4f8f-9c01-ea5325d616f3\n'
+                   'connection.id:corp\n'
+                   'connection.type:vpn\n'
+                   'vpn.service-type:org.freedesktop.NetworkManager.openvpn\n'
+                   'GENERAL.STATE:activating\n'
+                   'GENERAL.DEVICES:enp0s2\n')
+        summary = self.status.summarize(raw, details)
+        self.assertEqual(summary['state'], 'connecting')
+        self.assertEqual(summary['activeProfile'], '')
+        self.assertEqual(summary['profiles'][0]['state'], 'connecting')
+        self.assertFalse(summary['profiles'][0]['connected'])
+        activated = details.replace('GENERAL.STATE:activating', 'GENERAL.STATE:activated') + 'GENERAL.IP-IFACE:tun0\n'
+        summary = self.status.summarize(raw.replace(':activating:', ':activated:'), activated)
+        self.assertEqual((summary['state'], summary['interface']), ('connected', 'tun0'))
+
     def test_summarize_several_profiles_and_active_details(self):
         raw = (
             '11111111-1111-1111-1111-111111111111:vpn:yes:activated:tun0:Corp\\: West\n'

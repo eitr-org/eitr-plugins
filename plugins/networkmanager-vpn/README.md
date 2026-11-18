@@ -10,15 +10,15 @@ unavailable. The reviewed manifest installs official `networkmanager-openvpn` an
 
 Click the bar icon for the panel:
 
-- **Heading**: connection state and **Import** (or **Open Settings** when the desktop
-  uses iwd).
+- **Heading**: connection state and **Import**.
 - **Active profile**: the connected profile's name, protocol (`OpenVPN`, `OpenConnect`
   or `WireGuard`), interface, IP address (with a copy button), gateway/server and DNS.
 - **Profiles**: every OpenVPN, OpenConnect and WireGuard profile known to
   NetworkManager, with a connect/disconnect switch and a remove button that asks for
   confirmation in the panel first.
 - **When using iwd**: explains that NetworkManager VPN profiles need the NetworkManager
-  backend and opens **Settings > Connections > Wi-Fi > WiFi backend** instead of failing.
+  backend, with an **Open Settings** button below that opens
+  **Settings > Connections > Wi-Fi > WiFi backend** instead of failing.
 
 Status comes from `status.py --json` (`nmcli` connection list and non-secret profile
 details, three-second deadlines, at most 100 profiles). The bar icon refreshes every

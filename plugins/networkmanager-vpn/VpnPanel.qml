@@ -159,12 +159,6 @@ Item {
                 spacing: 6
                 VpnButton {
                     api: panel.api
-                    visible: panel.usingIwd
-                    text: Eitr.I18n.tr("Open Settings")
-                    onClicked: panel.run(["open-settings"])
-                }
-                VpnButton {
-                    api: panel.api
                     visible: !panel.usingIwd && panel.connectionState !== "not-installed"
                     text: Eitr.I18n.tr("Import")
                     onClicked: panel.run(["import"])
@@ -182,6 +176,14 @@ Item {
             opacity: 0.72
             font.family: panel.api.fontFamily
             font.pixelSize: panel.api.captionSize
+        }
+
+        // Below the explanation, so the heading keeps room for the plugin's full name.
+        VpnButton {
+            api: panel.api
+            visible: panel.usingIwd
+            text: Eitr.I18n.tr("Open Settings")
+            onClicked: panel.run(["open-settings"])
         }
 
         VpnDetails {

@@ -11,7 +11,7 @@ PROFILE_LIMIT = 100
 UUID_RE = re.compile(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\Z')
 PROTOCOL_LABELS = {'openvpn': 'OpenVPN', 'openconnect': 'OpenConnect', 'wireguard': 'WireGuard'}
 DETAIL_FIELDS = ('connection.uuid,connection.id,connection.type,vpn.service-type,vpn.data,'
-                 'GENERAL.STATE,GENERAL.DEVICES,IP4.ADDRESS,IP4.GATEWAY,IP4.DNS,IP6.ADDRESS')
+                 'GENERAL.STATE,GENERAL.DEVICES,GENERAL.IP-IFACE,IP4.ADDRESS,IP4.GATEWAY,IP4.DNS,IP6.ADDRESS')
 
 
 def text(value):
@@ -91,7 +91,8 @@ def parse_connections(output):
             continue
         if kind not in ('vpn', 'wireguard'):
             continue
-        connected = active == 'yes' or state == 'activated'
+        # ACTIVE is already "yes" while a connection is still activating: the state decides.
+        connected = state == 'activated' if state else active == 'yes'
         entries.append({
             'id': identifier,
             'name': text(name or identifier),
@@ -110,7 +111,7 @@ def parse_details(output, fallback_uuid=''):
 
     def ensure(identifier):
         return details.setdefault(identifier, {
-            'name': '', 'kind': '', 'serviceType': '', 'state': '', 'interface': '',
+            'name': '', 'kind': '', 'serviceType': '', 'state': '', 'interface': '', 'ipInterface': '',
             'addresses': [], 'gateway': '', 'dns': [], 'endpoint': ''
         })
 
@@ -139,6 +140,9 @@ def parse_details(output, fallback_uuid=''):
             record['state'] = cleaned
         elif key == 'GENERAL.DEVICES' and cleaned != '--':
             record['interface'] = cleaned
+        elif key == 'GENERAL.IP-IFACE' and cleaned != '--':
+            # A VPN's own device (tun0); GENERAL.DEVICES names the connection it runs over.
+            record['ipInterface'] = cleaned
         elif key.startswith(('IP4.ADDRESS', 'IP6.ADDRESS')) and cleaned and cleaned != '--':
             address = cleaned.split('/')[0].strip()
             if address and address not in record['addresses']:
@@ -169,8 +173,8 @@ def summarize(connections_output, details_output='', backend='networkmanager'):
         if protocol is None:
             continue
         detail_state = detail.get('state') or ''
-        connected = bool(candidate.get('connected') or detail_state == 'activated')
-        connecting = not connected and (candidate.get('state') == 'connecting' or detail_state == 'activating')
+        connected = detail_state == 'activated' if detail_state else bool(candidate.get('connected'))
+        connecting = not connected and (detail_state == 'activating' or (not detail_state and candidate.get('state') == 'connecting'))
         addresses = detail.get('addresses') or ([candidate['address']] if candidate.get('address') else [])
         dns_list = detail.get('dns') or ([candidate['dns']] if candidate.get('dns') else [])
         gateway = text(detail.get('gateway') or candidate.get('gateway'))
@@ -182,7 +186,7 @@ def summarize(connections_output, details_output='', backend='networkmanager'):
             'typeLabel': PROTOCOL_LABELS[protocol],
             'connected': connected,
             'state': 'connected' if connected else 'connecting' if connecting else 'disconnected',
-            'interface': text(detail.get('interface') or candidate.get('interface')) if connected else '',
+            'interface': text(detail.get('ipInterface') or detail.get('interface') or candidate.get('interface')) if connected else '',
             'address': text(addresses[0]) if addresses else '',
             'endpoint': endpoint,
             'gateway': gateway,
