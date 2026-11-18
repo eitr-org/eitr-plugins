@@ -134,6 +134,22 @@ class NetworkManagerVpnStatusTests(unittest.TestCase):
         summary = self.status.summarize(raw.replace(':activating:', ':activated:'), activated)
         self.assertEqual((summary['state'], summary['interface']), ('connected', 'tun0'))
 
+    def test_openvpn_device_comes_from_its_address(self):
+        # NetworkManager reports enp0s2 (the connection OpenVPN runs over); tun0 holds the address.
+        raw = 'ca7841a2-908f-4f8f-9c01-ea5325d616f3:vpn:yes:activated:enp0s2:corp\n'
+        details = ('connection.uuid:ca7841a2-908f-4f8f-9c01-ea5325d616f3\n'
+                   'connection.type:vpn\n'
+                   'vpn.service-type:org.freedesktop.NetworkManager.openvpn\n'
+                   'GENERAL.STATE:activated\n'
+                   'GENERAL.DEVICES:enp0s2\n'
+                   'GENERAL.IP-IFACE:enp0s2\n'
+                   'IP4.ADDRESS[1]:10.8.0.2/24\n')
+        ip_output = ('2: enp0s2    inet 10.0.2.15/24 brd 10.0.2.255 scope global dynamic noprefixroute enp0s2\\       valid_lft 85890sec preferred_lft 85890sec\n'
+                     '7: tun0    inet 10.8.0.2/24 scope global noprefixroute tun0\\       valid_lft forever preferred_lft forever\n')
+        summary = self.status.with_vpn_device(self.status.summarize(raw, details), ip_output)
+        self.assertEqual((summary['interface'], summary['profiles'][0]['interface']), ('tun0', 'tun0'))
+        self.assertEqual(self.status.device_for_address('10.8.0.9', ip_output), '')
+
     def test_summarize_several_profiles_and_active_details(self):
         raw = (
             '11111111-1111-1111-1111-111111111111:vpn:yes:activated:tun0:Corp\\: West\n'

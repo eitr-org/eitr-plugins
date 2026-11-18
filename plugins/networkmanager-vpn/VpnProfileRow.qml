@@ -81,9 +81,10 @@ Rectangle {
             api: row.api
             anchors.verticalCenter: parent.verticalCenter
             enabled: row.switchEnabled
-            checked: row.profile.connected === true
+            // On while connecting too, so a click stops an attempt instead of starting another.
+            checked: row.profile.connected === true || row.profile.state === "connecting"
             description: row.profile.name
-            onToggled: row.toggleRequested(row.profile.id, !row.profile.connected)
+            onToggled: row.toggleRequested(row.profile.id, !(row.profile.connected || row.profile.state === "connecting"))
         }
     }
 }

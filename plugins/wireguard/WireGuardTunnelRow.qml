@@ -78,9 +78,10 @@ Rectangle {
             api: row.api
             anchors.verticalCenter: parent.verticalCenter
             enabled: row.switchEnabled
-            checked: row.tunnel.connected === true
+            // On while connecting too, so a click stops an attempt instead of starting another.
+            checked: row.tunnel.connected === true || row.tunnel.state === "connecting"
             description: row.tunnel.name
-            onToggled: row.toggleRequested(row.tunnel.id, !row.tunnel.connected)
+            onToggled: row.toggleRequested(row.tunnel.id, !(row.tunnel.connected || row.tunnel.state === "connecting"))
         }
     }
 }

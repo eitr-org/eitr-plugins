@@ -225,6 +225,27 @@ def query(arguments):
     return result.stdout
 
 
+def device_for_address(address, ip_output):
+    """The device holding `address` in `ip -o addr show` output (tun0 for OpenVPN), or ''."""
+    for line in (ip_output or '').splitlines():
+        parts = line.split()
+        if len(parts) >= 4 and parts[2] in ('inet', 'inet6') and parts[3].split('/')[0] == address:
+            return text(parts[1].split('@')[0])
+    return ''
+
+
+def with_vpn_device(summary, ip_output):
+    """NetworkManager names the connection an OpenVPN or OpenConnect profile runs over
+    (enp0s2) as its device; the device holding the VPN's own address is the tunnel."""
+    for profile in summary['profiles']:
+        if profile['connected'] and profile['address']:
+            profile['interface'] = device_for_address(profile['address'], ip_output) or profile['interface']
+    active = next((profile for profile in summary['profiles'] if profile['connected']), None)
+    if active:
+        summary['interface'] = active['interface']
+    return summary
+
+
 def nm_active():
     try:
         return subprocess.run(['systemctl', 'is-active', '--quiet', 'NetworkManager.service'],
@@ -250,7 +271,13 @@ def read():
             details_output = query(['nmcli', '-t', '-f', DETAIL_FIELDS, 'connection', 'show', 'uuid', *uuids])
         except (OSError, ValueError, subprocess.SubprocessError):
             details_output = ''
-    return summarize(candidates, details_output, backend='networkmanager')
+    summary = summarize(candidates, details_output, backend='networkmanager')
+    if summary['activeProfile']:
+        try:
+            summary = with_vpn_device(summary, query(['ip', '-o', 'addr', 'show']))
+        except (OSError, ValueError, subprocess.SubprocessError):
+            pass
+    return summary
 
 
 if __name__ == '__main__':
