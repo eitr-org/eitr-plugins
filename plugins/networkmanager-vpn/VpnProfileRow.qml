@@ -3,13 +3,14 @@ import Eitr as Eitr
 
 // One NetworkManager VPN profile (OpenVPN, OpenConnect or WireGuard) in Eitr's 36 px
 // row metrics: glyph in the 10 px leading slot, name and protocol/state detail from
-// 36 px with a 2 px gap, and a connect/disconnect switch on the right.
+// 36 px with a 2 px gap, and remove and connect/disconnect on the right.
 Rectangle {
     id: row
     required property var api
     required property var profile
     property bool switchEnabled: true
     signal toggleRequested(string identifier, bool connect)
+    signal removeRequested(string identifier, string name)
 
     implicitHeight: 36
     radius: api.radius
@@ -18,7 +19,8 @@ Rectangle {
     border.color: Qt.alpha(api.foreground, 0.15)
     readonly property string stateText: row.profile.connected ? Eitr.I18n.tr("Connected")
         : row.profile.state === "connecting" ? Eitr.I18n.tr("Connecting…") : Eitr.I18n.tr("Disconnected")
-    readonly property string detail: (row.profile.typeLabel ? row.profile.typeLabel + " · " : "")
+    readonly property string detail: removeButton.hovered ? Eitr.I18n.tr("Remove {name}", {name: row.profile.name})
+        : (row.profile.typeLabel ? row.profile.typeLabel + " · " : "")
         + (row.profile.connected && row.profile.address ? row.profile.address + " · " : "") + stateText
 
     HoverHandler { id: rowHover }
@@ -36,7 +38,7 @@ Rectangle {
     }
     Column {
         x: 36
-        width: Math.max(0, profileSwitch.x - x - 6)
+        width: Math.max(0, actions.x - x - 6)
         anchors.verticalCenter: parent.verticalCenter
         spacing: 2
         Text {
@@ -61,14 +63,27 @@ Rectangle {
             font.features: {"tnum": 1}
         }
     }
-    VpnSwitch {
-        id: profileSwitch
+    Row {
+        id: actions
         x: row.width - width - 4
         anchors.verticalCenter: parent.verticalCenter
-        api: row.api
-        enabled: row.switchEnabled
-        checked: row.profile.connected === true
-        description: row.profile.name
-        onToggled: row.toggleRequested(row.profile.id, !row.profile.connected)
+        spacing: 6
+        VpnButton {
+            id: removeButton
+            api: row.api
+            anchors.verticalCenter: parent.verticalCenter
+            enabled: row.switchEnabled
+            glyph: "\u{F01B4}"
+            description: Eitr.I18n.tr("Remove {name}", {name: row.profile.name})
+            onClicked: row.removeRequested(row.profile.id, row.profile.name)
+        }
+        VpnSwitch {
+            api: row.api
+            anchors.verticalCenter: parent.verticalCenter
+            enabled: row.switchEnabled
+            checked: row.profile.connected === true
+            description: row.profile.name
+            onToggled: row.toggleRequested(row.profile.id, !row.profile.connected)
+        }
     }
 }

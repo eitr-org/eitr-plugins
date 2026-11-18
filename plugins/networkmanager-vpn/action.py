@@ -14,7 +14,7 @@ UUID_RE = re.compile(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\Z')
 GUIDE = ('The active WiFi backend is iwd or NetworkManager is unavailable. VPN profiles need '
          'NetworkManager. Choose Settings > Connections > Wi-Fi > WiFi backend, then reboot. '
          'The saved choice leaves the current connection running.')
-BACKGROUND = ('up', 'down', 'connect', 'disconnect', 'open-settings')
+BACKGROUND = ('up', 'down', 'connect', 'disconnect', 'remove', 'open-settings')
 
 
 def notify(message):
@@ -65,18 +65,24 @@ def import_profile(active):
     wait_for_escape()
 
 
-def switch_profile(direction, identifier):
+def checked_profile(identifier):
+    """The identifier, once it names a saved VPN or WireGuard profile and nothing else."""
     if not UUID_RE.fullmatch(identifier):
         raise ValueError('Invalid profile identifier.')
     kind = run(['nmcli', '-g', 'connection.type', 'connection', 'show', 'uuid', identifier]).strip()
     if kind not in ('vpn', 'wireguard'):
         raise ValueError('Only VPN connections are supported.')
+    return identifier
+
+
+def switch_profile(direction, identifier):
+    checked_profile(identifier)
     step = 'up' if direction in ('up', 'connect') else 'down'
     run(['nmcli', '--wait', '30', 'connection', step, 'uuid', identifier])
 
 
 def background(arguments):
-    """Panel actions: connect/disconnect via nmcli, or open Settings when on iwd."""
+    """Panel actions: connect, disconnect or remove via nmcli, or open Settings when on iwd."""
     action = arguments[0]
     try:
         if action == 'open-settings':
@@ -87,6 +93,8 @@ def background(arguments):
             return
         if len(arguments) == 2 and action in ('up', 'down', 'connect', 'disconnect'):
             switch_profile(action, arguments[1])
+        elif len(arguments) == 2 and action == 'remove':
+            run(['nmcli', 'connection', 'delete', 'uuid', checked_profile(arguments[1])])
         else:
             raise ValueError('Unknown action.')
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:

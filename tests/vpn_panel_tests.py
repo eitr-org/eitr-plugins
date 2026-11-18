@@ -222,15 +222,20 @@ class PanelRenderTests(unittest.TestCase):
                     icon_qml = 'WireGuardBarIcon' if plugin_kind == 'wireguard' else 'VpnBarIcon'
                     primary = wg_data if plugin_kind == 'wireguard' else nm_data
                     secondary = wg_data if plugin_kind == 'wireguard' else nm_iwd_data
-                    confirm_snippet = 'panelSecondary.requestRemove("staging", "staging");' if plugin_kind == 'wireguard' else ''
+                    confirm_snippet = ('panelSecondary.requestRemove("staging", "staging");' if plugin_kind == 'wireguard'
+                                       else 'panelPrimary.requestRemove("33333333-3333-3333-3333-333333333333", "University AnyConnect");')
                     secondary_title = 'Inline remove confirmation' if plugin_kind == 'wireguard' else 'When desktop uses iwd'
                     fixture = Path(directory) / f'{plugin_kind}-{theme}.qml'
                     fixture.write_text(f'''import QtQuick
 import Quickshell
 import "{folder_uri}" as PluginUi
+import "{(DESKTOP / 'quickshell/desktop-bar/components').as_uri()}" as Host
+import "{(DESKTOP / 'quickshell/desktop-bar').as_uri()}" as Bar
 ShellRoot {{
+    Component {{ id: hostButton; Host.PanelButton {{ foreground: "{foreground}"; text: "" }} }}
+    Component {{ id: hostToggle; Host.PanelSwitch {{ foreground: "{foreground}"; accent: "{accent}" }} }}
     FloatingWindow {{
-        visible: true; implicitWidth: 880; implicitHeight: 540
+        visible: true; implicitWidth: 880; implicitHeight: 600
         Rectangle {{
             id: sample; anchors.fill: parent; color: "{canvas}"
             QtObject {{
@@ -240,11 +245,12 @@ ShellRoot {{
                 property color foreground: "{foreground}"
                 property color background: "{background}"
                 property color accent: "{accent}"
-                property string fontFamily: "sans-serif"
+                property string fontFamily: Bar.DesktopFonts.family
                 property int headingSize: 14
                 property int bodySize: 13
                 property int captionSize: 11
                 property real radius: 6
+                readonly property var controls: ({{button: hostButton, toggle: hostToggle}})
                 function runDataCommand() {{}}
             }}
             QtObject {{
@@ -254,11 +260,12 @@ ShellRoot {{
                 property color foreground: "{foreground}"
                 property color background: "{background}"
                 property color accent: "{accent}"
-                property string fontFamily: "sans-serif"
+                property string fontFamily: Bar.DesktopFonts.family
                 property int headingSize: 14
                 property int bodySize: 13
                 property int captionSize: 11
                 property real radius: 6
+                readonly property var controls: ({{button: hostButton, toggle: hostToggle}})
                 function runDataCommand() {{}}
             }}
             Row {{

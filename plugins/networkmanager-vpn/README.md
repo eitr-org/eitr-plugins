@@ -15,7 +15,8 @@ Click the bar icon for the panel:
 - **Active profile**: the connected profile's name, protocol (`OpenVPN`, `OpenConnect`
   or `WireGuard`), interface, IP address (with a copy button), gateway/server and DNS.
 - **Profiles**: every OpenVPN, OpenConnect and WireGuard profile known to
-  NetworkManager, with a connect/disconnect switch.
+  NetworkManager, with a connect/disconnect switch and a remove button that asks for
+  confirmation in the panel first.
 - **When using iwd**: explains that NetworkManager VPN profiles need the NetworkManager
   backend and opens **Settings > Connections > Wi-Fi > WiFi backend** instead of failing.
 
@@ -27,7 +28,9 @@ while nothing shows them.
 ## Actions
 
 The panel runs `action.py` detached with fixed argv. Connecting and disconnecting a
-profile select it by UUID (`nmcli --wait 30 connection up/down uuid <UUID>`), so
+profile select it by UUID (`nmcli --wait 30 connection up/down uuid <UUID>`), and
+removing one deletes only a profile whose type is VPN or WireGuard
+(`nmcli connection delete uuid <UUID>`), so
 duplicate names and names containing colons stay unambiguous, and NetworkManager's
 desktop authentication popup handles any provider credentials without asking for
 passwords in the bar.

@@ -10,6 +10,8 @@ Column {
     required property var status
     property string copiedText: ""
     readonly property string endpoint: status.endpoint || ""
+    // Every value ends at the same edge, leaving a column for the copy buttons.
+    readonly property real copyColumn: 34
     signal copyRequested(string value)
     spacing: 6
 
@@ -38,13 +40,13 @@ Column {
             }
             Text {
                 id: value
-                x: parent.width - width - (copyButton.visible ? copyButton.width + 6 : 0)
-                width: (parent.width - 12) * 0.6 - (copyButton.visible ? copyButton.width + 6 : 0)
+                x: parent.width - width - details.copyColumn
+                width: (parent.width - 12) * 0.6 - details.copyColumn
                 anchors.verticalCenter: parent.verticalCenter
                 horizontalAlignment: Text.AlignRight
                 text: fact.modelData.value
                 textFormat: Text.PlainText
-                wrapMode: Text.WrapAnywhere
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 color: details.api.foreground
                 font.family: details.api.fontFamily
                 font.pixelSize: details.api.captionSize

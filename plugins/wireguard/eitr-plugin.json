@@ -3,7 +3,7 @@
   "id": "wireguard",
   "name": "WireGuard",
   "author": "The Eitr project",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "WireGuard on the bar: import, connect, inspect and remove tunnels",
   "icon": "icon.svg",
   "rows": [

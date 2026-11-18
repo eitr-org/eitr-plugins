@@ -3,7 +3,7 @@
   "id": "networkmanager-vpn",
   "name": "NetworkManager VPN",
   "author": "The Eitr project",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "NetworkManager VPN on the bar: OpenVPN, OpenConnect and WireGuard",
   "icon": "icon.svg",
   "rows": [

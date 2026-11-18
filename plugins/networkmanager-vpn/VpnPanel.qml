@@ -6,7 +6,7 @@ import "VpnState.js" as VpnState
 
 // The NetworkManager VPN panel: OpenVPN, OpenConnect and WireGuard profiles known to
 // NetworkManager with connect/disconnect switches, the active profile's details, and
-// Import. When the desktop uses iwd, it explains the NetworkManager backend choice and
+// Import, with inline confirmation before removing a profile. When the desktop uses iwd, it explains the NetworkManager backend choice and
 // opens Settings > Connections > Wi-Fi > WiFi backend instead of failing.
 Item {
     id: panel
@@ -15,6 +15,8 @@ Item {
     property string copiedAddress: ""
     property string pendingAction: ""
     property string pendingTarget: ""
+    property string confirmRemoveId: ""
+    property string confirmRemoveName: ""
     readonly property string actionScript: decodeURIComponent(Qt.resolvedUrl("action.py").toString().replace(/^file:\/\//, ""))
     readonly property string connectionState: status ? status.state : ""
     readonly property bool connected: connectionState === "connected"
@@ -34,10 +36,13 @@ Item {
         const parsed = VpnState.parse(api.dataText);
         if (parsed === null) return;
         status = parsed;
+        if (confirmRemoveId !== "" && !(parsed.profiles || []).some(profile => profile.id === confirmRemoveId))
+            cancelRemove();
         if (pendingAction !== "") {
             const target = (parsed.profiles || []).find(profile => profile.id === pendingTarget);
             if ((pendingAction === "up" && target && target.connected)
-                || (pendingAction === "down" && (!target || !target.connected))) {
+                || (pendingAction === "down" && (!target || !target.connected))
+                || (pendingAction === "remove" && !target)) {
                 pendingAction = "";
                 pendingTarget = "";
                 followUp.stop();
@@ -52,11 +57,25 @@ Item {
 
     function run(argumentsList) {
         Quickshell.execDetached([panel.actionScript].concat(argumentsList));
-        if (argumentsList[0] !== "up" && argumentsList[0] !== "down") return;
+        if (["up", "down", "remove"].indexOf(argumentsList[0]) === -1) return;
         pendingAction = argumentsList[0];
         pendingTarget = argumentsList[1] || "";
         followUp.remaining = 6;
         followUp.restart();
+    }
+    function requestRemove(identifier, name) {
+        confirmRemoveId = identifier;
+        confirmRemoveName = name;
+    }
+    function cancelRemove() {
+        confirmRemoveId = "";
+        confirmRemoveName = "";
+    }
+    function confirmRemove() {
+        if (confirmRemoveId === "") return;
+        const identifier = confirmRemoveId;
+        cancelRemove();
+        run(["remove", identifier]);
     }
     function copy(address) {
         Quickshell.clipboardText = address;
@@ -120,6 +139,7 @@ Item {
                     width: parent.width
                     text: panel.pendingAction === "up" ? Eitr.I18n.tr("Connecting…")
                         : panel.pendingAction === "down" ? Eitr.I18n.tr("Disconnecting…")
+                    : panel.pendingAction === "remove" ? Eitr.I18n.tr("Removing…")
                         : panel.connected && panel.status && panel.status.activeProfile
                             ? Eitr.I18n.tr("Connected") + " · " + panel.status.activeProfile
                         : panel.status ? Eitr.I18n.tr(VpnState.stateLabels[panel.connectionState] || "Status unavailable")
@@ -196,6 +216,51 @@ Item {
                     profile: modelData
                     switchEnabled: panel.pendingAction === ""
                     onToggleRequested: (identifier, shouldConnect) => panel.run([shouldConnect ? "up" : "down", identifier])
+                    onRemoveRequested: (identifier, name) => panel.requestRemove(identifier, name)
+                }
+            }
+        }
+
+        Rectangle {
+            visible: panel.confirmRemoveId !== ""
+            width: parent.width
+            height: visible ? confirmRow.implicitHeight + 16 : 0
+            radius: panel.api.radius
+            color: Qt.alpha(panel.api.foreground, 0.05)
+            border.width: 1
+            border.color: Qt.alpha(panel.api.foreground, 0.18)
+            Item {
+                id: confirmRow
+                x: 10
+                y: 8
+                width: parent.width - 20
+                implicitHeight: Math.max(confirmLabel.implicitHeight, confirmButtons.height)
+                Text {
+                    id: confirmLabel
+                    width: Math.max(0, parent.width - confirmButtons.width - 12)
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Eitr.I18n.tr("Remove profile {name}?", {name: panel.confirmRemoveName})
+                    textFormat: Text.PlainText
+                    wrapMode: Text.Wrap
+                    color: panel.api.foreground
+                    font.family: panel.api.fontFamily
+                    font.pixelSize: panel.api.bodySize
+                }
+                Row {
+                    id: confirmButtons
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 6
+                    VpnButton {
+                        api: panel.api
+                        text: Eitr.I18n.tr("Cancel")
+                        onClicked: panel.cancelRemove()
+                    }
+                    VpnButton {
+                        api: panel.api
+                        text: Eitr.I18n.tr("Remove")
+                        onClicked: panel.confirmRemove()
+                    }
                 }
             }
         }

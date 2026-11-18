@@ -126,9 +126,19 @@ class VPNTests(unittest.TestCase):
         plugin.run.side_effect = ['vpn\n', '']
         plugin.background(['up', identifier])
         self.assertEqual(plugin.run.call_args.args[0], ['nmcli', '--wait', '30', 'connection', 'up', 'uuid', identifier])
+        plugin.run.side_effect = ['vpn\n', '']
+        plugin.background(['remove', identifier])
+        self.assertEqual(plugin.run.call_args.args[0], ['nmcli', 'connection', 'delete', 'uuid', identifier])
+        # Only a VPN profile is ever deleted: an ethernet or Wi-Fi connection is refused.
+        plugin.run.side_effect = ['802-3-ethernet\n']
+        plugin.run.reset_mock()
         with patch.object(plugin, 'notify'):
             with self.assertRaises(SystemExit):
+                plugin.background(['remove', identifier])
+            with self.assertRaises(SystemExit):
                 plugin.background(['up', 'not-a-uuid'])
+        self.assertEqual(plugin.run.call_count, 1)
+        plugin.run.side_effect = None
         plugin.nm_active = Mock(return_value=False)
         plugin.background(['up', identifier])
         plugin.open_settings.assert_called_once_with()

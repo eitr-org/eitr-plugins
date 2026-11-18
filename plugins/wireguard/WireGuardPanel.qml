@@ -116,7 +116,7 @@ Item {
                 WireGuardLogo {
                     anchors.centerIn: parent
                     size: 18
-                    background: panel.api.background
+                    foreground: panel.api.foreground
                     dimmed: !panel.connected
                 }
             }

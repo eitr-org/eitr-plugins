@@ -2,7 +2,7 @@ import QtQuick
 import "WireGuardState.js" as WireGuardState
 
 // The bar slot: WireGuard's official logo at full strength while a tunnel is active
-// and dimmed while disconnected or unavailable.
+// and in the bar's text colour while disconnected or unavailable.
 Item {
     id: icon
     required property var api
@@ -14,7 +14,7 @@ Item {
     WireGuardLogo {
         anchors.centerIn: parent
         size: 18
-        background: icon.api.background
+        foreground: icon.api.foreground
         dimmed: !icon.connected
     }
 }

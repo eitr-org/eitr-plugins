@@ -1,8 +1,8 @@
 import QtQuick
 
-// A text button, or a 24×24 glyph button when only `glyph` is set, drawn like Eitr's
-// panel buttons: a subtle foreground border, a hover fill and no colour of its own.
-Rectangle {
+// Eitr's own panel button (api.controls.button): a text button, or a glyph button when
+// only `glyph` is set.
+Item {
     id: button
     required property var api
     property string text: ""
@@ -12,35 +12,22 @@ Rectangle {
     readonly property bool hovered: hover.hovered
     signal clicked()
 
-    implicitWidth: iconOnly ? 24 : label.implicitWidth + 24
-    implicitHeight: iconOnly ? 24 : 28
-    radius: api.radius
-    color: Qt.alpha(api.foreground, !enabled ? 0.02 : hover.hovered || activeFocus ? 0.12 : iconOnly ? 0 : 0.04)
-    border.width: iconOnly ? 0 : 1
-    border.color: Qt.alpha(api.foreground, 0.15)
-    opacity: enabled ? 1 : 0.5
-    activeFocusOnTab: true
-    Accessible.role: Accessible.Button
-    Accessible.name: description
-    Keys.onReturnPressed: clicked()
-    Keys.onEnterPressed: clicked()
-    Keys.onSpacePressed: clicked()
-
-    Text {
-        id: label
-        anchors.centerIn: parent
-        text: button.iconOnly ? button.glyph : button.text
-        textFormat: Text.PlainText
-        color: button.api.foreground
-        font.family: button.api.fontFamily
-        font.pixelSize: button.iconOnly ? 15 : button.api.bodySize
-    }
-    MouseArea {
-        id: hover
-        readonly property bool hovered: containsMouse
+    implicitWidth: iconOnly ? 28 : Math.max(68, labelSize.advanceWidth + 20)
+    implicitHeight: iconOnly ? 28 : 32
+    width: implicitWidth
+    height: implicitHeight
+    TextMetrics { id: labelSize; text: button.text; font.family: button.api.fontFamily; font.pixelSize: button.api.bodySize }
+    HoverHandler { id: hover }
+    Loader {
         anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: button.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-        onClicked: if (button.enabled) button.clicked()
+        sourceComponent: button.api.controls.button
+        onLoaded: {
+            item.icon = Qt.binding(() => button.iconOnly);
+            item.iconSize = 16;
+            item.text = Qt.binding(() => button.iconOnly ? button.glyph : button.text);
+            item.available = Qt.binding(() => button.enabled);
+            item.Accessible.name = Qt.binding(() => button.description);
+            item.clicked.connect(() => button.clicked());
+        }
     }
 }
