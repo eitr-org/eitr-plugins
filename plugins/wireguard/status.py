@@ -279,6 +279,31 @@ def summarize(wg_output, profiles=(), backend='networkmanager', active_links=())
     }
 
 
+def link_transfer(interface, root=Path('/sys/class/net')):
+    """Traffic counters from the kernel's interface statistics, which any user can read.
+    `wg show` needs administrator rights for a root-owned tunnel, so it often prints nothing."""
+    if not NAME_RE.fullmatch(interface or ''):
+        return ''
+    try:
+        statistics = root / interface / 'statistics'
+        received = int((statistics / 'rx_bytes').read_text())
+        sent = int((statistics / 'tx_bytes').read_text())
+    except (OSError, ValueError):
+        return ''
+    return f'{format_bytes(received)} received, {format_bytes(sent)} sent'
+
+
+def fill_transfer(summary, reader=link_transfer):
+    """Fill missing transfer counters of connected tunnels from their interface statistics."""
+    for tunnel in summary['tunnels']:
+        if tunnel['connected'] and not tunnel['transfer']:
+            tunnel['transfer'] = reader(tunnel['interface'])
+    active = next((tunnel for tunnel in summary['tunnels'] if tunnel['connected']), None)
+    if active and not summary['transfer']:
+        summary['transfer'] = active['transfer']
+    return summary
+
+
 def query(arguments):
     result = subprocess.run(arguments, capture_output=True, text=True, timeout=3, check=False,
                             env={**os.environ, 'LC_ALL': 'C'})
@@ -317,14 +342,14 @@ def read():
             if wg_output is None:
                 return empty_state(True, 'unavailable', backend)
             nm_output = ''
-        return summarize(wg_output or '', nm_output, backend=backend)
+        return fill_transfer(summarize(wg_output or '', nm_output, backend=backend))
     links_output = ''
     if wg_output is None:
         try:
             links_output = query(['ip', '-brief', 'link', 'show', 'type', 'wireguard'])
         except (OSError, ValueError, subprocess.SubprocessError):
             return empty_state(True, 'unavailable', backend)
-    return summarize(wg_output or '', saved_wg_quick_profiles(), backend=backend, active_links=links_output)
+    return fill_transfer(summarize(wg_output or '', saved_wg_quick_profiles(), backend=backend, active_links=links_output))
 
 
 if __name__ == '__main__':

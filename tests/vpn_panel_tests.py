@@ -29,6 +29,25 @@ class WireGuardStatusTests(unittest.TestCase):
         self.assertEqual(summary['tunnelCount'], 0)
         self.assertEqual(summary['tunnels'], [])
 
+    def test_root_owned_tunnel_reads_transfer_from_interface_statistics(self):
+        # wg-quick on iwd: `wg show` is refused without administrator rights, so only the link is known.
+        summary = self.status.summarize('', [{'id': 'office', 'name': 'office', 'interface': 'office',
+                                               'endpoint': '10.99.0.2:51820'}],
+                                         backend='wg-quick', active_links='office  UNKNOWN\n')
+        self.assertEqual((summary['state'], summary['transfer'], summary['handshake']), ('connected', '', ''))
+        with tempfile.TemporaryDirectory() as directory:
+            statistics = Path(directory) / 'office' / 'statistics'
+            statistics.mkdir(parents=True)
+            (statistics / 'rx_bytes').write_text('6760\n')
+            (statistics / 'tx_bytes').write_text('7032\n')
+            self.assertEqual(self.status.link_transfer('office', Path(directory)), '6.60 KiB received, 6.87 KiB sent')
+            self.assertEqual(self.status.link_transfer('../office', Path(directory)), '')
+            self.assertEqual(self.status.link_transfer('missing', Path(directory)), '')
+            filled = self.status.fill_transfer(summary, lambda name: self.status.link_transfer(name, Path(directory)))
+        self.assertEqual(filled['transfer'], '6.60 KiB received, 6.87 KiB sent')
+        self.assertEqual(filled['tunnels'][0]['transfer'], filled['transfer'])
+        self.assertEqual(filled['handshake'], '')
+
     def test_summarize_several_tunnels_from_wg_show_and_nmcli(self):
         wg_show = (
             'interface: office\n'

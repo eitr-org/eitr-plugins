@@ -20,9 +20,10 @@ Column {
             {label: Eitr.I18n.tr("Active tunnel"), value: details.status.activeTunnel || details.status.interface || Eitr.I18n.tr("Unavailable"), copy: false},
             {label: Eitr.I18n.tr("Endpoint"), value: details.copiedText !== "" && details.copiedText === details.endpoint
                 ? Eitr.I18n.tr("Copied") : details.endpoint || Eitr.I18n.tr("Unavailable"), copy: details.endpoint !== ""},
-            {label: Eitr.I18n.tr("Transfer"), value: details.status.transfer || Eitr.I18n.tr("0 B received, 0 B sent"), copy: false},
-            {label: Eitr.I18n.tr("Latest handshake"), value: details.status.handshake || Eitr.I18n.tr("Pending"), copy: false}
-        ]
+            {label: Eitr.I18n.tr("Transfer"), value: details.status.transfer || Eitr.I18n.tr("Unavailable"), copy: false},
+            // Only `wg show` with administrator rights knows the handshake: without it, no row.
+            {label: Eitr.I18n.tr("Latest handshake"), value: details.status.handshake || "", copy: false}
+        ].filter(fact => fact.value !== "")
         Item {
             id: fact
             required property var modelData

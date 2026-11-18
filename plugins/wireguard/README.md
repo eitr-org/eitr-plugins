@@ -12,7 +12,9 @@ Click the bar icon for the panel:
 - **Heading**: connection state and **Import a config**, which opens Eitr's task
   terminal to review and import a `.conf` file.
 - **Active tunnel**: the connected tunnel's name, endpoint (with a copy button),
-  transfer and latest handshake.
+  transfer and, when `wg show` may read it, the latest handshake. A tunnel owned by root
+  (`wg-quick` on iwd, or NetworkManager's) refuses `wg show` to your account, so the
+  transfer comes from the interface's kernel statistics and the handshake is left out.
 - **Tunnels**: every imported tunnel with its connect/disconnect switch and a remove
   button that asks for inline confirmation before deleting the tunnel.
 
