@@ -91,10 +91,14 @@ def import_profile(active):
         raise RuntimeError('Cannot identify imported profile.')
     try:
         run(['nmcli', 'connection', 'modify', 'uuid', identifiers[0], 'connection.autoconnect', 'no'])
+        # NetworkManager starts a newly added WireGuard profile at once, before automatic
+        # connection is off: take it down so nothing is routed through it until asked.
+        if run(['nmcli', '-g', 'GENERAL.STATE', 'connection', 'show', 'uuid', identifiers[0]]).strip():
+            run(['nmcli', 'connection', 'down', 'uuid', identifiers[0]])
     except (RuntimeError, OSError, subprocess.SubprocessError):
         run(['nmcli', 'connection', 'delete', 'uuid', identifiers[0]])
         raise
-    print('Imported; automatic connection is disabled.')
+    print('Imported; disconnected, and automatic connection is off.')
     wait_for_escape()
 
 

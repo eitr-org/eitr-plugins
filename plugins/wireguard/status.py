@@ -304,6 +304,32 @@ def fill_transfer(summary, reader=link_transfer):
     return summary
 
 
+def peer_endpoint(peers_output):
+    """The first `endpoint=` in NetworkManager's `wireguard.peers` (public data any user may read)."""
+    for part in (peers_output or '').replace(',', ' ').split():
+        if part.startswith('endpoint='):
+            return text(part.partition('=')[2].replace('\\:', ':'))
+    return ''
+
+
+def fill_nm_endpoints(summary, read_peers):
+    """Fill missing endpoints of connected NetworkManager tunnels from their saved peers."""
+    for tunnel in summary['tunnels']:
+        if tunnel['connected'] and not tunnel['endpoint'] and UUID_RE.fullmatch(tunnel['id']):
+            tunnel['endpoint'] = peer_endpoint(read_peers(tunnel['id']))
+    active = next((tunnel for tunnel in summary['tunnels'] if tunnel['connected']), None)
+    if active and not summary['endpoint']:
+        summary['endpoint'] = active['endpoint']
+    return summary
+
+
+def nm_peers(identifier):
+    try:
+        return query(['nmcli', '-g', 'wireguard.peers', 'connection', 'show', 'uuid', identifier])
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return ''
+
+
 def query(arguments):
     result = subprocess.run(arguments, capture_output=True, text=True, timeout=3, check=False,
                             env={**os.environ, 'LC_ALL': 'C'})
@@ -342,7 +368,7 @@ def read():
             if wg_output is None:
                 return empty_state(True, 'unavailable', backend)
             nm_output = ''
-        return fill_transfer(summarize(wg_output or '', nm_output, backend=backend))
+        return fill_nm_endpoints(fill_transfer(summarize(wg_output or '', nm_output, backend=backend)), nm_peers)
     links_output = ''
     if wg_output is None:
         try:

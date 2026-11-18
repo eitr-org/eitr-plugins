@@ -48,6 +48,15 @@ class WireGuardStatusTests(unittest.TestCase):
         self.assertEqual(filled['tunnels'][0]['transfer'], filled['transfer'])
         self.assertEqual(filled['handshake'], '')
 
+    def test_networkmanager_tunnel_endpoint_comes_from_its_saved_peers(self):
+        identifier = 'ad60b436-5e56-4408-8f64-491ea1b1e2cf'
+        peers = ('HofU37MD8yhT9ovAB9GgDd4AxheL3+oTBJS4njKpeCU= allowed-ips=10.66.0.0/24 '
+                 'endpoint=10.99.0.2\\:51820 persistent-keepalive=5\n')
+        self.assertEqual(self.status.peer_endpoint(peers), '10.99.0.2:51820')
+        summary = self.status.summarize('', f'{identifier}:wireguard:yes:activated:office:office\n')
+        filled = self.status.fill_nm_endpoints(summary, lambda uuid: peers if uuid == identifier else '')
+        self.assertEqual((filled['endpoint'], filled['tunnels'][0]['endpoint']), ('10.99.0.2:51820', '10.99.0.2:51820'))
+
     def test_summarize_several_tunnels_from_wg_show_and_nmcli(self):
         wg_show = (
             'interface: office\n'

@@ -30,7 +30,7 @@ Column {
             width: details.width
             height: Math.max(24, value.implicitHeight)
             Text {
-                width: (parent.width - 12) * 0.4
+                width: (parent.width - 12) * 0.32
                 anchors.verticalCenter: parent.verticalCenter
                 text: fact.modelData.label
                 textFormat: Text.PlainText
@@ -42,7 +42,7 @@ Column {
             Text {
                 id: value
                 x: parent.width - width - details.copyColumn
-                width: (parent.width - 12) * 0.6 - details.copyColumn
+                width: (parent.width - 12) * 0.68 - details.copyColumn
                 anchors.verticalCenter: parent.verticalCenter
                 horizontalAlignment: Text.AlignRight
                 text: fact.modelData.value

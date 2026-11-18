@@ -119,6 +119,26 @@ class VPNTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 plugin.background(['up', '../bad'])
 
+    def test_networkmanager_import_takes_the_new_profile_down(self):
+        # NetworkManager starts a WireGuard profile as soon as it is added; the import must
+        # leave it disconnected, with automatic connection off.
+        identifier = 'ad60b436-5e56-4408-8f64-491ea1b1e2cf'
+        config = ('[Interface]\nPrivateKey = yAnz5TF+lXXJte14tji3zlMNq+hd2rYUIgJBgB3fBmk=\nAddress = 10.66.0.2/24\n\n'
+                  '[Peer]\nPublicKey = xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=\n'
+                  'Endpoint = 10.99.0.2:51820\nAllowedIPs = 10.66.0.0/24\n')
+        for plugin_id in ('wireguard', 'networkmanager-vpn'):
+            plugin = load(plugin_id)
+            with tempfile.TemporaryDirectory() as temporary:
+                path = Path(temporary) / 'office.conf'
+                path.write_text(config)
+                plugin.collect.return_value = {'file': str(path)}
+                plugin.run.side_effect = [f"Connection 'office' ({identifier}) successfully added.", '', 'activated\n', '']
+                with patch('builtins.print'):
+                    plugin.import_profile(True)
+            commands = [call.args[0] for call in plugin.run.call_args_list]
+            self.assertEqual(commands[1], ['nmcli', 'connection', 'modify', 'uuid', identifier, 'connection.autoconnect', 'no'])
+            self.assertEqual(commands[-1], ['nmcli', 'connection', 'down', 'uuid', identifier], plugin_id)
+
     def test_networkmanager_vpn_panel_actions_and_iwd_settings_route(self):
         plugin = load('networkmanager-vpn')
         identifier = '12345678-1234-1234-1234-123456789abc'
