@@ -13,6 +13,11 @@ Column {
     // Every value ends at the same edge, leaving a column for the copy buttons.
     readonly property real copyColumn: 34
     signal copyRequested(string value)
+    // "6.60 KiB received, 6.87 KiB sent" (wg show's wording) as "↓ 6.60 KiB · ↑ 6.87 KiB", which fits one line.
+    function arrows(transfer) {
+        const parts = /^(.+) received, (.+) sent$/.exec(transfer || "");
+        return parts ? "\u2193 " + parts[1] + " \u00B7 \u2191 " + parts[2] : (transfer || "");
+    }
     spacing: 6
 
     Repeater {
@@ -20,7 +25,7 @@ Column {
             {label: Eitr.I18n.tr("Active tunnel"), value: details.status.activeTunnel || details.status.interface || Eitr.I18n.tr("Unavailable"), copy: false},
             {label: Eitr.I18n.tr("Endpoint"), value: details.copiedText !== "" && details.copiedText === details.endpoint
                 ? Eitr.I18n.tr("Copied") : details.endpoint || Eitr.I18n.tr("Unavailable"), copy: details.endpoint !== ""},
-            {label: Eitr.I18n.tr("Transfer"), value: details.status.transfer || Eitr.I18n.tr("Unavailable"), copy: false},
+            {label: Eitr.I18n.tr("Transfer"), value: details.arrows(details.status.transfer) || Eitr.I18n.tr("Unavailable"), copy: false},
             // Only `wg show` with administrator rights knows the handshake: without it, no row.
             {label: Eitr.I18n.tr("Latest handshake"), value: details.status.handshake || "", copy: false}
         ].filter(fact => fact.value !== "")
