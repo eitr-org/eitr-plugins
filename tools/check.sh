@@ -7,6 +7,10 @@ export PYTHONPYCACHEPREFIX="$scratch/pycache"
 export PYTHONDONTWRITEBYTECODE=1
 python3 -m unittest discover -s tests -v
 python3 -m compileall -q plugins tests
+if command -v node >/dev/null; then
+  node tests/test_world_clock_state.js
+  node tests/test_widget_helpers.js
+fi
 if [[ -x /usr/lib/qt6/bin/qmllint ]]; then
   /usr/lib/qt6/bin/qmllint --ignore-settings --max-warnings -1 \
     --import disable --unqualified disable --missing-property disable \
@@ -16,6 +20,9 @@ if [[ -x /usr/lib/qt6/bin/qmllint ]]; then
     --inheritance-cycle error --unterminated-case error \
     --var-used-before-declaration error --eval error --with error \
     plugins/*/*.qml
+fi
+if [[ -x /usr/lib/qt6/bin/qmllint ]]; then
+  /usr/lib/qt6/bin/qmllint plugins/notes/*.qml plugins/hardware/*.qml
 fi
 if command -v shellcheck >/dev/null; then
   shellcheck tools/check.sh

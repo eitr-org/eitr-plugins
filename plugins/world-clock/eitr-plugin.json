@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 2,
+  "id": "world-clock",
+  "name": "World clock",
+  "author": "The Eitr project",
+  "version": "0.1.0",
+  "description": "Offline city times beside the clock, with daylight saving support",
+  "icon": "icon.svg",
+  "rows": [],
+  "ui": {
+    "barItems": [
+      {
+        "id": "clock",
+        "title": "World clock",
+        "qml": "WorldClockBar.qml",
+        "slot": "clock",
+        "panel": "panel",
+        "dataStream": {
+          "run": "runtime.py",
+          "arguments": [
+            "stream"
+          ]
+        }
+      }
+    ],
+    "panels": [
+      {
+        "id": "panel",
+        "title": "World clock",
+        "qml": "WorldClockPanel.qml",
+        "surface": "panel",
+        "header": false,
+        "dataStream": {
+          "run": "runtime.py",
+          "arguments": [
+            "stream"
+          ]
+        },
+        "dataCommand": {
+          "run": "runtime.py",
+          "arguments": [
+            "status"
+          ]
+        }
+      }
+    ],
+    "tiles": [
+      {
+        "id": "configure",
+        "title": "World clock",
+        "qml": "WorldClockTile.qml",
+        "panel": "panel"
+      }
+    ]
+  }
+}

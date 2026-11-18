@@ -6,9 +6,14 @@ Official plugins for [Eitr](https://github.com/eitr-org/eitr), reviewed by the E
 |---|---|
 | [Visualizer](plugins/visualizer) | A desktop audio visualizer that moves with whatever is playing, in a Wave or Bars style |
 | [Lofi Radio](plugins/lofi-radio) | Lofi music through lowfi, controlled from the bar |
+| [Radio Globe](plugins/radio-globe) | Explore live radio on a globe, search stations and save favorites |
 | [WireGuard](plugins/wireguard) | WireGuard on the bar: import, connect, inspect and remove tunnels on iwd or NetworkManager |
 | [NetworkManager VPN](plugins/networkmanager-vpn) | NetworkManager VPN on the bar: OpenVPN, OpenConnect and WireGuard profiles, connection details and import |
 | [Tailscale](plugins/tailscale) | Tailscale on the bar: connect, see your devices, copy their addresses and send or receive files |
+| [World clock](plugins/world-clock) | Offline city times immediately before the centred bar clock |
+| [Phone Link](plugins/phone-link) | Pair phones through KDE Connect, send files and clipboard text, and find your phone |
+| [Notes](plugins/notes) | Sticky notes on your desktop, saved separately per note copy |
+| [Hardware](plugins/hardware) | Live CPU, GPU, RAM, root storage and network speeds on your desktop in Compact or Detailed layout |
 
 ## Install
 

@@ -10,6 +10,10 @@
       "path": "plugins/lofi-radio"
     },
     {
+      "id": "radio-globe",
+      "path": "plugins/radio-globe"
+    },
+    {
       "id": "wireguard",
       "path": "plugins/wireguard"
     },
@@ -20,6 +24,22 @@
     {
       "id": "tailscale",
       "path": "plugins/tailscale"
+    },
+    {
+      "id": "world-clock",
+      "path": "plugins/world-clock"
+    },
+    {
+      "id": "phone-link",
+      "path": "plugins/phone-link"
+    },
+    {
+      "id": "notes",
+      "path": "plugins/notes"
+    },
+    {
+      "id": "hardware",
+      "path": "plugins/hardware"
     }
   ]
 }

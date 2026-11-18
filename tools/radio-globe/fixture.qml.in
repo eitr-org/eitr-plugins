@@ -1,0 +1,178 @@
+import QtQuick
+import Quickshell
+import "components" as Controls
+import "plugin" as Plugin
+import "plugin/GlobeMath.js" as GlobeMath
+import "plugin/Strings.js" as Strings
+
+ShellRoot {
+    id: fixture
+    property string scenario: SCENARIO
+    property bool light: LIGHT
+    function find(item, name) {
+        if (item.objectName === name) return item;
+        for (const child of item.children || []) {
+            const found = find(child, name);
+            if (found) return found;
+        }
+        return null;
+    }
+    QtObject {
+        id: api
+        property color foreground: fixture.light ? "#26373a" : "#e1ecea"
+        property color background: fixture.light ? "#f3f4ed" : "#14262b"
+        property color accent: fixture.light ? "#256e71" : "#83c7c0"
+        property var palette: ({foreground: foreground, color4: accent})
+        property string fontFamily: "JetBrainsMono Nerd Font"
+        property real radius: 4
+        property bool observed: true
+        property string detail: ""
+        property string dataText: '{"ok":true,"playing":{"station":{"name":"Rádio Aurora"}}}'
+        property var controls: ({button: button, textField: textField, dropdown: dropdown})
+        signal themeChanged()
+        function runDataCommand() {}
+    }
+    Component { id: button; Controls.PanelButton { foreground: api.foreground; text: "" } }
+    Component { id: textField; Controls.PanelTextField { foreground: api.foreground; accent: api.accent } }
+    Component { id: dropdown; Controls.ChoiceDropdown { foreground: api.foreground; background: api.background; gold: api.accent } }
+    TextMetrics { id: hintMetrics; font.family: api.fontFamily; font.pixelSize: 11 }
+    FloatingWindow {
+        id: window
+        visible: true
+        implicitWidth: 640
+        implicitHeight: panel.implicitHeight + 80
+        color: api.background
+        Rectangle {
+            id: capture
+            anchors.fill: parent
+            color: api.background
+            Plugin.RadioPanel { id: panel; x: 20; y: 56; width: parent.width - 40; api: api }
+            Rectangle {
+                id: barCapture
+                width: 64; height: 40; x: 20; y: 6
+                color: api.background
+                Plugin.RadioBar { id: bar; anchors.centerIn: parent; api: api }
+            }
+        }
+        Timer {
+            id: sequence
+            property int step: 0
+            property int closedTicks: 0
+            interval: 250; repeat: true; running: true
+            onTriggered: {
+                const state = fixture.find(panel, "radio-backend");
+                if (!state || state.countries.length === 0) return;
+                const retry = fixture.find(panel, "retry");
+                if (step === 0) {
+                    if (api.detail !== Strings.tr("Now playing") + " · Rádio Aurora") throw new Error("Playing detail missing");
+                    api.dataText = '{"playing":{"station":{"name":"Next station"}}}';
+                    if (api.detail !== Strings.tr("Now playing") + " · Next station") throw new Error("Playing detail stale");
+                    for (const payload of ['{"playing":null}', 'invalid']) {
+                        api.dataText = payload;
+                        if (api.detail !== "") throw new Error("Stopped detail retained");
+                    }
+                    api.dataText = '{"playing":{"station":{"name":"Rádio Aurora"}}}';
+                    for (const child of [...bar.children, ...bar.resources]) {
+                        if (child.toString().indexOf("ToolTip") !== -1) throw new Error("Duplicate bar tooltip");
+                    }
+                    if (fixture.find(panel, "globe-toggle")) throw new Error("The globe can no longer be hidden");
+                    if (fixture.find(panel, "globe-hint").visible) throw new Error("Hint shown without a hovered country");
+                    // The filter menu's choices fit it in every language, and choosing one sets the mode.
+                    for (const locale of ["en", ...Object.keys(Strings.translations)]) {
+                        for (const label of ["Name", "Tag", "Country", "Search by"]) {
+                            hintMetrics.text = Strings.tr(label, locale);
+                            if (hintMetrics.advanceWidth > 160 - 32) throw new Error("Filter choice clipped: " + locale);
+                        }
+                    }
+                    // The filter button is what a click on it reaches, not the field it sits in.
+                    const filter = fixture.find(panel, "search-filter");
+                    if (filter.parent.childAt(filter.x + filter.width / 2, filter.y + filter.height / 2) !== filter)
+                        throw new Error("The search field covers the filter button");
+                    const menu = fixture.find(panel, "search-filter-menu");
+                    if (menu.visible) throw new Error("Filter menu open at start");
+                    panel.filterOpen = true;
+                    if (!menu.visible) throw new Error("Filter menu did not open");
+                    menu.chosen("tag");
+                    if (panel.filterOpen || panel.searchMode !== "tag") throw new Error("Filter choice failed");
+                    // Favorites shows a way back that returns to the list it replaced.
+                    panel.favoritesOnly = true;
+                    const backButton = fixture.find(panel, "favorites-back");
+                    if (!backButton || !backButton.visible) throw new Error("Favorites has no way back");
+                    backButton.clicked();
+                    if (panel.favoritesOnly) throw new Error("Back did not leave Favorites");
+                    // By country: typing lists matching countries, and choosing one selects it.
+                    panel.searchMode = "country";
+                    panel.searchText = state.countries[0].name.slice(0, 3);
+                    if (!panel.pickingCountry || !panel.countryMatches.some(country => country.code === state.countries[0].code))
+                        throw new Error("Country search failed");
+                    panel.chooseCountry(panel.countryMatches[0]);
+                    if (panel.pickingCountry || panel.countryCode === "") throw new Error("Country not chosen");
+                    panel.searchMode = "name";
+                    panel.chooseCountry(state.countries[0]);
+                    const front = GlobeMath.project(0, 0, 0, 0);
+                    const back = GlobeMath.project(180, 0, 0, 0);
+                    if (front[2] !== 1 || back[2] !== -1 || GlobeMath.dotRadius(10) >= GlobeMath.dotRadius(100)) throw new Error("Projection failed");
+                    const seen = GlobeMath.project(-49.5, -12.1, -30, 10);
+                    const place = GlobeMath.unproject(seen[0], seen[1], -30, 10);
+                    if (Math.abs(place[0] + 49.5) > 0.01 || Math.abs(place[1] + 12.1) > 0.01 || GlobeMath.unproject(1, 1, 0, 0) !== null)
+                        throw new Error("Unprojection failed");
+                    // A square country with a square hole: inside, in the hole, and outside.
+                    const shapes = GlobeMath.prepare({AA: [[[0, 0, 10, 0, 10, 10, 0, 10, 0, 0], [4, 4, 6, 4, 6, 6, 4, 6, 4, 4]]], "-": [[[20, 0, 30, 0, 30, 10, 20, 10, 20, 0]]]});
+                    const square = shapes[0].polygons[0];
+                    if (square.reach < 5 || square.reach > 9 || GlobeMath.distance(0, 0, 90, 0) !== 90) throw new Error("Shape preparation failed");
+                    if (GlobeMath.countryAt(shapes, 2, 2) !== "AA" || GlobeMath.countryAt(shapes, 5, 5) !== "" || GlobeMath.countryAt(shapes, 25, 5) !== ""
+                        || GlobeMath.countryAt(shapes, 362, 2) !== "AA") throw new Error("Country shape hit test failed");
+                    const targets = [{code:"AA", location:[0,0], count:10}, {code:"ZZ", location:[0,180], count:100}];
+                    if (GlobeMath.hit(targets, 100, 100, 80, 100, 100, 0, 0).code !== "AA"
+                        || GlobeMath.hit(targets, 0, 0, 80, 100, 100, 0, 0) !== null) throw new Error("Country hit test failed");
+                    for (const locale of Object.keys(Strings.translations)) {
+                        if (Strings.translations[locale].length !== Strings.keys.length) throw new Error("Translation gap: " + locale);
+                    }
+                    step++; return;
+                }
+                if (state.busy) return;
+                if (step === 1) {
+                    if (state.stations.length !== 3 || state.favorites.length !== 1 || !state.playing) throw new Error("Backend data missing");
+                    if (!panel.reduceMotion) throw new Error("Reduce motion ignored");
+                    if (retry.visible) throw new Error("Retry visible after success");
+                    state.parse('{"ok":false,"error":"The station player could not start"}');
+                    if (retry.visible) throw new Error("Playback failure shows loading Retry");
+                    state.error = "";
+                    state.search("name", "slow", 0);
+                    state.search("tag", "ambient", 0);
+                    step++; return;
+                }
+                if (step === 2) {
+                    if (state.queryMode !== "tag" || state.stations.length !== 3) throw new Error("Search coalescing failed");
+                    state.search("name", "failure", 0);
+                    step++; return;
+                }
+                if (step === 3) {
+                    if (!retry.visible || !state.error) throw new Error("Retry missing after loading failure");
+                    if (fixture.scenario !== "offline") {
+                        retry.clicked();
+                        state.search("tag", "ambient", 0);
+                        if (retry.visible) throw new Error("Retry retained during recovery");
+                    }
+                    step++; return;
+                }
+                if (step === 4) {
+                    if (fixture.scenario !== "offline" && (retry.visible || state.stations.length !== 3)) throw new Error("Loading recovery failed");
+                    if (fixture.scenario === "favorites") panel.favoritesOnly = true;
+                    api.observed = false;
+                    console.log("RADIO_PANEL_CLOSED", Date.now() / 1000);
+                    step++; return;
+                }
+                if (fixture.scenario === "lifecycle" && closedTicks++ < 14) return;
+                capture.grabToImage(result => {
+                    if (!result.saveToFile(OUTPUT)) throw new Error("Capture failed");
+                    barCapture.grabToImage(icon => {
+                        if (!icon.saveToFile(OUTPUT.replace(".png", "-bar.png"))) throw new Error("Bar capture failed");
+                        console.log("RADIO_RENDER_OK"); Qt.quit();
+                    });
+                });
+                sequence.stop();
+            }
+        }
+    }
+}

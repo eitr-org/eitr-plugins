@@ -1,0 +1,9 @@
+GeoNames geographical data, https://www.geonames.org/
+Copyright GeoNames contributors. Licensed under Creative Commons Attribution 4.0
+International (CC BY 4.0): https://creativecommons.org/licenses/by/4.0/
+
+cities.json.gz is a compressed, field-reduced and population-sorted adaptation of
+GeoNames cities15000.txt, admin1CodesASCII.txt and countryInfo.txt, provided locally
+for this build. Cities with timezones absent from the build system's tzdata are
+excluded. No endorsement by GeoNames is implied. Code remains under the repository
+MIT license. Regenerate with tools/build_world_clock_data.py.
