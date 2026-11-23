@@ -372,9 +372,9 @@ class ManifestTests(unittest.TestCase):
                 result = eitr_plugin_review.check(folder)
                 self.assertIn('Offline review transport verified.', result)
                 self.assertIn('action.py', assistant.call_args.args[0])
-        self.assertEqual(len(eitr_plugin_manifest.repository_plugins(ROOT)), 10)
+        self.assertEqual(len(eitr_plugin_manifest.repository_plugins(ROOT)), 9)
 
-    def test_notes_and_hardware_manifests_limits_and_review(self):
+    def test_notes_and_visualizer_manifests_limits_and_review(self):
         import eitr_plugin_install
         import eitr_plugin_manifest
         import eitr_plugin_review
@@ -388,18 +388,7 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual((note_widget['defaultWidth'], note_widget['defaultHeight']), (260, 240))
         self.assertEqual(eitr_plugin_install.live_flags(notes), [])
 
-        hardware = eitr_plugin_manifest.manifest(ROOT / 'plugins/hardware')
-        self.assertEqual(hardware['schemaVersion'], 2)
-        self.assertEqual(hardware['id'], 'hardware')
-        self.assertEqual(hardware['capabilities'], ['hardware'])
-        hw_widget, = hardware['ui']['widgets']
-        self.assertEqual((hw_widget['id'], hw_widget['surface']), ('hardware', 'panel'))
-        self.assertEqual((hw_widget['defaultWidth'], hw_widget['defaultHeight']), (480, 280))
-        self.assertEqual((hw_widget['minWidth'], hw_widget['minHeight']), (260, 88))
-        flags = eitr_plugin_install.live_flags(hardware)
-        self.assertTrue(any('hardware' in flag.lower() for flag in flags), flags)
-
-        for plugin_id in ('notes', 'hardware', 'visualizer'):
+        for plugin_id in ('notes', 'visualizer'):
             folder = ROOT / 'plugins' / plugin_id
             with tempfile.TemporaryDirectory() as temporary:
                 records = eitr_plugin_review.snapshot(folder, Path(temporary) / 'repository')
@@ -450,58 +439,13 @@ class WidgetRenderAndHostTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
 
-    def test_offscreen_widget_renders_and_missing_telemetry(self):
+    def test_offscreen_widget_renders(self):
         if not shutil.which('quickshell'):
             self.skipTest('quickshell not available')
         sys.path.insert(0, str(ROOT / 'tests'))
         import render_widgets
         with tempfile.TemporaryDirectory() as tmp:
             scenes = render_widgets.default_scenes(tmp)
-            scenes.append({
-                'name': 'hardware-missing-gpu.png',
-                'kind': 'hardware',
-                'theme': 'dark',
-                'plugin_id': 'hardware',
-                'entry_id': 'hardware',
-                'title': 'Hardware',
-                'surface': 'panel',
-                'widget_width': 480,
-                'widget_height': 280,
-                'saved': {'mode': 'detailed'},
-                'hardware': {
-                    'status': 'ready',
-                    'error': '',
-                    'identity': {},
-                    'sections': [
-                        {
-                            'title': 'CPU',
-                            'name': 'Intel Core i5',
-                            'usage': 41,
-                            'rows': [['Cores / threads', '8 / 12'], ['Frequency / temperature', 'Unavailable']],
-                        },
-                        {
-                            'title': 'GPU',
-                            'name': 'GPU telemetry unavailable',
-                            'usage': None,
-                            'rows': [],
-                        },
-                        {
-                            'title': 'RAM',
-                            'name': 'Memory',
-                            'usage': 50,
-                            'rows': [['Used / total', '8.0 GiB / 16.0 GiB']],
-                        },
-                        {
-                            'title': 'Storage',
-                            'name': 'Root',
-                            'usage': 30,
-                            'rows': [['Used / total', '75 GiB / 250 GiB']],
-                        },
-                    ],
-                    'network': {'status': 'loading', 'download': None, 'upload': None, 'interfaces': [], 'connection': ''},
-                },
-                'out_path': str(Path(tmp) / 'hardware-missing-gpu.png'),
-            })
             for scene in scenes:
                 out = render_widgets.render_scene(scene)
                 header = out.read_bytes()[:8]
@@ -539,8 +483,6 @@ class WidgetRenderAndHostTests(unittest.TestCase):
             tmp_path = Path(tmp)
             harness = tmp_path / 'contract_harness.qml'
             notes_uri = render_widgets.NOTES_QML.as_uri()
-            hw_uri = render_widgets.HARDWARE_QML.as_uri()
-            hw_sample = json.dumps(render_widgets.SAMPLE_HARDWARE)
             harness.write_text(f"""import QtQuick
 import QtQuick.Window
 import Quickshell
@@ -594,53 +536,11 @@ ShellRoot {{
             }}
         }}
 
-        QtObject {{
-            id: hwApi
-            property string pluginId: "hardware"
-            property string entryId: "hardware"
-            property string instance: "hw-a"
-            property string surface: "panel"
-            property string title: "Hardware"
-            property string detail: ""
-            property bool compact: false
-            property bool editing: false
-            property color background: "#161821"
-            property color foreground: "#ebeef5"
-            property color accent: "#d5b55c"
-            property var palette: ({{ surface: "#1c1f2b" }})
-            property real radius: 12
-            property real spacing: 8
-            property string fontFamily: "sans-serif"
-            property real headingSize: 16
-            property real bodySize: 13
-            property real captionSize: 11
-            property var instanceData: null
-            property bool instanceDataReady: true
-            property var hardware: ({hw_sample})
-            property var savedPayloads: []
-            property var menuEntries: []
-            signal instanceDataLoaded()
-            signal menuTriggered(string id)
-            function setMenu(entries) {{ menuEntries = entries || []; }}
-            function saveInstanceData(value) {{
-                const copy = savedPayloads.slice();
-                copy.push(value);
-                savedPayloads = copy;
-            }}
-        }}
-
         Loader {{
             id: notesLoader
             width: 260
             height: 240
             Component.onCompleted: setSource("{notes_uri}", {{ api: notesApi }})
-        }}
-
-        Loader {{
-            id: hwLoader
-            width: 480
-            height: 280
-            Component.onCompleted: setSource("{hw_uri}", {{ api: hwApi }})
         }}
 
         Timer {{
@@ -650,19 +550,14 @@ ShellRoot {{
             onTriggered: {{
                 notesApi.menuTriggered("green");
                 notesApi.releaseKeyboard();
-                hwApi.menuTriggered("compact");
                 const noteMenuIds = notesApi.menuEntries.map(entry => entry.id).join(",");
-                const hwMenuIds = hwApi.menuEntries.map(entry => entry.id).join(",");
                 console.log("CHECK:" + JSON.stringify({{
                     noteLoaded: notesLoader.status === Loader.Ready,
                     noteAcceptsKeyboard: notesApi.acceptsKeyboard,
                     noteReleased: notesApi.releasedCount,
                     noteMenuIds: noteMenuIds,
                     noteSavedColor: notesApi.savedPayloads.length > 0 ? notesApi.savedPayloads[notesApi.savedPayloads.length - 1].color : "",
-                    noteTextMatched: notesApi.savedPayloads.length > 0 && notesApi.savedPayloads[notesApi.savedPayloads.length - 1].text === "{secret_note}",
-                    hwLoaded: hwLoader.status === Loader.Ready,
-                    hwMenuIds: hwMenuIds,
-                    hwSavedMode: hwApi.savedPayloads.length > 0 ? hwApi.savedPayloads[hwApi.savedPayloads.length - 1].mode : ""
+                    noteTextMatched: notesApi.savedPayloads.length > 0 && notesApi.savedPayloads[notesApi.savedPayloads.length - 1].text === "{secret_note}"
                 }}));
                 Qt.quit();
             }}
@@ -700,9 +595,6 @@ ShellRoot {{
             self.assertEqual(payload['noteMenuIds'], 'yellow,green,blue,pink,purple,theme')
             self.assertEqual(payload['noteSavedColor'], 'green')
             self.assertTrue(payload['noteTextMatched'])
-            self.assertTrue(payload['hwLoaded'])
-            self.assertEqual(payload['hwMenuIds'], 'compact,detailed')
-            self.assertEqual(payload['hwSavedMode'], 'compact')
 
     def test_visualizer_options_migration_fallback_and_menu(self):
         quickshell = shutil.which('quickshell')

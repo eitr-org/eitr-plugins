@@ -1,4 +1,4 @@
-"""Offscreen Quickshell screenshot renderer for Notes and Hardware desktop widgets."""
+"""Offscreen Quickshell screenshot renderer for Notes and Visualizer desktop widgets."""
 import json
 import os
 from pathlib import Path
@@ -9,7 +9,6 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 NOTES_QML = ROOT / 'plugins/notes/Notes.qml'
-HARDWARE_QML = ROOT / 'plugins/hardware/Hardware.qml'
 VISUALIZER_QML = ROOT / 'plugins/visualizer/Visualizer.qml'
 
 SAMPLE_SPECTRUM = [
@@ -286,58 +285,6 @@ def default_scenes(out_dir):
             'widget_height': 240,
             'saved': note_sample,
             'out_path': str(out_dir / 'notes-light.png'),
-        },
-        {
-            'name': 'hardware-compact-dark.png',
-            'kind': 'hardware',
-            'theme': 'dark',
-            'plugin_id': 'hardware',
-            'entry_id': 'hardware',
-            'title': 'Hardware',
-            'surface': 'panel',
-            'widget_width': 480,
-            'widget_height': 96,
-            'saved': {'mode': 'compact'},
-            'out_path': str(out_dir / 'hardware-compact-dark.png'),
-        },
-        {
-            'name': 'hardware-compact-light.png',
-            'kind': 'hardware',
-            'theme': 'light',
-            'plugin_id': 'hardware',
-            'entry_id': 'hardware',
-            'title': 'Hardware',
-            'surface': 'panel',
-            'widget_width': 480,
-            'widget_height': 96,
-            'saved': {'mode': 'compact'},
-            'out_path': str(out_dir / 'hardware-compact-light.png'),
-        },
-        {
-            'name': 'hardware-detailed-dark.png',
-            'kind': 'hardware',
-            'theme': 'dark',
-            'plugin_id': 'hardware',
-            'entry_id': 'hardware',
-            'title': 'Hardware',
-            'surface': 'panel',
-            'widget_width': 480,
-            'widget_height': 280,
-            'saved': {'mode': 'detailed'},
-            'out_path': str(out_dir / 'hardware-detailed-dark.png'),
-        },
-        {
-            'name': 'hardware-detailed-light.png',
-            'kind': 'hardware',
-            'theme': 'light',
-            'plugin_id': 'hardware',
-            'entry_id': 'hardware',
-            'title': 'Hardware',
-            'surface': 'panel',
-            'widget_width': 480,
-            'widget_height': 280,
-            'saved': {'mode': 'detailed'},
-            'out_path': str(out_dir / 'hardware-detailed-light.png'),
         },
     ]
 

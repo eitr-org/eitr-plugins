@@ -36,10 +36,6 @@
     {
       "id": "notes",
       "path": "plugins/notes"
-    },
-    {
-      "id": "hardware",
-      "path": "plugins/hardware"
     }
   ]
 }
