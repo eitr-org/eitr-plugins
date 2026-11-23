@@ -3,6 +3,8 @@ import QtQuick
 import QtQuick.Window
 import Quickshell
 import Quickshell.Io
+import "Strings.js" as Strings
+import "VisualizerState.js" as State
 
 Item {
     id: root
@@ -13,9 +15,11 @@ Item {
     // "accent": one colour from the theme accent; "palette": a gradient through the theme's
     // yellow, red, magenta and blue (color3, color1, color5, color4), low to high.
     property string colors: "accent"
+    readonly property string activeStyle: State.normalizeStyle(style)
+    readonly property string activeColors: State.normalizeColors(colors)
     readonly property var paletteStops: {
         const palette = api.palette || {};
-        const picked = ["color3", "color1", "color5", "color4"].map(name => palette[name]).filter(value => !!value);
+        const picked = ["color3", "color1", "color5", "color4"].map(function(name) { return palette[name]; }).filter(function(value) { return !!value; });
         return picked.length === 4 ? picked : [secondAccent, api.accent, brightAccent, brightAccent];
     }
     // Disable persistence for embedding and synthetic render harnesses.
@@ -31,6 +35,8 @@ Item {
     property int ticks: 0
     property bool settled: false
     property bool ready: false
+    property bool saveQueued: false
+    property string lastWrittenText: ""
     readonly property color reflectionShadow: Qt.alpha(core, 0.08)
 
     function mix(first, second, amount) {
@@ -38,31 +44,55 @@ Item {
                        first.g * (1 - amount) + second.g * amount,
                        first.b * (1 - amount) + second.b * amount, 1);
     }
-    function save() {
-        if (ready && persistOptions)
-            preferences.setText(JSON.stringify({version: 1, style: style, colors: colors}) + "\n");
+    function clearGradients() {
+        canvas.barGradient = null;
+        canvas.waveGradient = null;
+        canvas.reflectionGradient = null;
+        canvas.mirrorGradient = null;
+        canvas.ringGradient = null;
+        canvas.dotsGradient = null;
     }
-    onStyleChanged: { settled = false; save(); updateMenu(); }
-    onColorsChanged: { canvas.barGradient = null; canvas.waveGradient = null; canvas.reflectionGradient = null; canvas.requestPaint(); save(); updateMenu(); }
-    onPaletteStopsChanged: { canvas.barGradient = null; canvas.waveGradient = null; canvas.reflectionGradient = null; canvas.requestPaint(); }
+    function flushSave() {
+        if (!saveQueued || !ready || !persistOptions) return;
+        saveQueued = false;
+        const payload = JSON.stringify({version: 1, style: activeStyle, colors: activeColors}) + "\n";
+        lastWrittenText = payload;
+        preferences.setText(payload);
+    }
+    function save() {
+        if (ready && persistOptions && !saveQueued) {
+            saveQueued = true;
+            Qt.callLater(flushSave);
+        }
+    }
+    onStyleChanged: { settled = false; canvas.requestPaint(); save(); updateMenu(); }
+    onColorsChanged: { clearGradients(); canvas.requestPaint(); save(); updateMenu(); }
+    onPaletteStopsChanged: { clearGradients(); canvas.requestPaint(); }
     onCoreChanged: { canvas.reflectionGradient = null; canvas.requestPaint(); }
-    onSecondAccentChanged: { canvas.barGradient = null; canvas.requestPaint(); }
-    onBrightAccentChanged: { canvas.barGradient = null; canvas.requestPaint(); }
+    onSecondAccentChanged: { clearGradients(); canvas.requestPaint(); }
+    onBrightAccentChanged: { clearGradients(); canvas.requestPaint(); }
     FileView {
         id: preferences
         path: root.persistOptions ? (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/eitr-plugin-visualizer/options.json" : ""
+        atomicWrites: true
         printErrors: false
         watchChanges: true
         onFileChanged: reload()
+        onSaved: if (root.saveQueued) root.flushSave()
         onLoaded: {
-            try {
-                const saved = JSON.parse(text());
-                if (saved.version === 1) {
-                    root.ready = false;
-                    root.style = saved.style === "terminal" ? "terminal" : "wave";
-                    root.colors = saved.colors === "palette" ? "palette" : "accent";
-                }
-            } catch (error) { console.warn("Visualizer: ignoring invalid options JSON"); }
+            const rawText = text();
+            if (rawText === root.lastWrittenText || root.saveQueued) {
+                root.ready = true;
+                return;
+            }
+            const parsed = State.parseOptions(rawText);
+            if (parsed) {
+                root.ready = false;
+                root.style = parsed.style;
+                root.colors = parsed.colors;
+            } else {
+                console.warn("Visualizer: ignoring invalid options JSON");
+            }
             root.ready = true;
         }
         onLoadFailed: root.ready = true
@@ -72,7 +102,16 @@ Item {
         api.spectrumBars = count;
         api.spectrumFrameRate = 30;
         api.spectrumSmoothing = false;
+        if (!persistOptions && api.instanceData && typeof api.instanceData === "object") {
+            if ("style" in api.instanceData) root.style = State.normalizeStyle(api.instanceData.style);
+            if ("colors" in api.instanceData) root.colors = State.normalizeColors(api.instanceData.colors);
+        }
         updateMenu();
+        if (api.audioActive && api.spectrum && api.spectrum.length > 0) {
+            const warmupSteps = persistOptions ? 1 : 6;
+            for (let step = 0; step < warmupSteps; ++step)
+                advance();
+        }
     }
     Connections {
         target: root.api
@@ -81,7 +120,7 @@ Item {
     }
     // Fixed storage is reused for smoothing, gravity and five history frames.
     function advance() {
-        const source = api.spectrum;
+        const source = api.spectrum || [];
         const dt = timer.interval / 1000;
         let moving = false;
         head = (head + 1) % 5;
@@ -89,7 +128,7 @@ Item {
             history[head * count + index] = levels[index];
             const raw = api.audioActive && source.length > 0 ? source[Math.min(source.length - 1, Math.floor(index * source.length / count))] : 0;
             const target = Number.isFinite(raw) ? Math.max(0, Math.min(1, raw)) : 0;
-            if (style === "terminal") {
+            if (activeStyle !== "wave") {
                 if (target >= levels[index]) { levels[index] = target; velocity[index] = 0; }
                 else {
                     velocity[index] += 5 * dt;
@@ -119,14 +158,44 @@ Item {
         property var barGradient: null
         property var waveGradient: null
         property var reflectionGradient: null
-        onWidthChanged: requestPaint()
-        onHeightChanged: { barGradient = null; waveGradient = null; reflectionGradient = null; requestPaint(); }
-        // The palette runs low to high over the whole height, so taller bars reach later colours.
-        function paletteGradient(context, bottom, top) {
-            const gradient = context.createLinearGradient(0, bottom, 0, top);
-            const stops = root.paletteStops;
-            for (let index = 0; index < stops.length; ++index)
-                gradient.addColorStop(index / (stops.length - 1), stops[index]);
+        property var mirrorGradient: null
+        property var ringGradient: null
+        property var dotsGradient: null
+        onWidthChanged: { ringGradient = null; dotsGradient = null; requestPaint(); }
+        onHeightChanged: { root.clearGradients(); requestPaint(); }
+        // The palette runs low to high over the span, so taller peaks reach later colours.
+        function addStops(gradient) {
+            if (root.activeColors === "palette") {
+                const stops = root.paletteStops;
+                for (let index = 0; index < stops.length; ++index)
+                    gradient.addColorStop(index / (stops.length - 1), stops[index]);
+            } else {
+                gradient.addColorStop(0, root.secondAccent);
+                gradient.addColorStop(0.55, root.api.accent);
+                gradient.addColorStop(1, root.brightAccent);
+            }
+            return gradient;
+        }
+        function linearSpanGradient(context, bottom, top) {
+            return addStops(context.createLinearGradient(0, bottom, 0, top));
+        }
+        function symmetricGradient(context, fullHeight) {
+            const gradient = context.createLinearGradient(0, 0, 0, fullHeight);
+            if (root.activeColors === "palette") {
+                const stops = root.paletteStops;
+                const last = stops.length - 1;
+                for (let index = 0; index < stops.length; ++index) {
+                    const offset = (index / last) * 0.5;
+                    gradient.addColorStop(0.5 - offset, stops[index]);
+                    if (offset > 0) gradient.addColorStop(0.5 + offset, stops[index]);
+                }
+            } else {
+                gradient.addColorStop(0, root.brightAccent);
+                gradient.addColorStop(0.225, root.api.accent);
+                gradient.addColorStop(0.5, root.secondAccent);
+                gradient.addColorStop(0.775, root.api.accent);
+                gradient.addColorStop(1, root.brightAccent);
+            }
             return gradient;
         }
         // Frequency zero is at the centre; each side samples the same curve.
@@ -159,16 +228,9 @@ Item {
             const context = getContext("2d");
             context.reset();
             context.clearRect(0, 0, width, height);
-            if (root.style === "terminal") {
-                if (!barGradient) {
-                    if (root.colors === "palette") barGradient = paletteGradient(context, height, 0);
-                    else {
-                        barGradient = context.createLinearGradient(0, height, 0, 0);
-                        barGradient.addColorStop(0, root.secondAccent);
-                        barGradient.addColorStop(0.55, root.api.accent);
-                        barGradient.addColorStop(1, root.brightAccent);
-                    }
-                }
+            const baseInk = root.activeColors === "palette" ? root.paletteStops[0] : root.api.accent;
+            if (root.activeStyle === "bars") {
+                if (!barGradient) barGradient = linearSpanGradient(context, height, 0);
                 context.fillStyle = barGradient;
                 const step = width / root.count;
                 for (let index = 0; index < root.count; ++index) {
@@ -178,11 +240,65 @@ Item {
                 }
                 return;
             }
-            if (root.colors === "palette" && !waveGradient) waveGradient = paletteGradient(context, height * 0.69, height * 0.09);
-            const ink = root.colors === "palette" ? waveGradient : root.core;
+            if (root.activeStyle === "mirror") {
+                const layout = State.mirrorGeometry(width, height, root.levels, root.count);
+                context.fillStyle = Qt.alpha(baseInk, 0.22);
+                context.fillRect(0, Math.floor(layout.centerY), width, 1);
+                if (!mirrorGradient) mirrorGradient = symmetricGradient(context, height);
+                context.fillStyle = mirrorGradient;
+                for (let index = 0; index < layout.bars.length; ++index) {
+                    const bar = layout.bars[index];
+                    if (bar.height > 0)
+                        context.fillRect(bar.x, bar.y, bar.width, bar.height);
+                }
+                return;
+            }
+            if (root.activeStyle === "ring") {
+                const ring = State.ringGeometry(width, height, root.levels, root.count);
+                context.beginPath();
+                context.arc(ring.cx, ring.cy, ring.baseRadius, 0, Math.PI * 2);
+                context.strokeStyle = Qt.alpha(baseInk, 0.28);
+                context.lineWidth = ring.baseStrokeWidth;
+                context.stroke();
+                if (!ringGradient)
+                    ringGradient = addStops(context.createRadialGradient(ring.cx, ring.cy, ring.baseRadius, ring.cx, ring.cy, ring.outerRadius));
+                context.strokeStyle = ringGradient;
+                context.lineWidth = ring.barWidth;
+                context.lineCap = "round";
+                for (let index = 0; index < ring.bars.length; ++index) {
+                    const bar = ring.bars[index];
+                    if (bar.length > 0) {
+                        context.beginPath();
+                        context.moveTo(bar.x0, bar.y0);
+                        context.lineTo(bar.x1, bar.y1);
+                        context.stroke();
+                    }
+                }
+                return;
+            }
+            if (root.activeStyle === "dots") {
+                const layout = State.dotsGeometry(width, height, root.levels, root.count);
+                if (!dotsGradient)
+                    dotsGradient = linearSpanGradient(context, layout.bottomY + layout.dotRadius, Math.max(0, layout.topY - layout.dotRadius));
+                const faintInk = Qt.alpha(baseInk, 0.20);
+                for (let index = 0; index < layout.dots.length; ++index) {
+                    const dot = layout.dots[index];
+                    context.fillStyle = faintInk;
+                    context.beginPath();
+                    context.arc(dot.cx, dot.bottomY, layout.baseRadius, 0, Math.PI * 2);
+                    context.fill();
+                    context.fillStyle = dotsGradient;
+                    context.beginPath();
+                    context.arc(dot.cx, dot.cy, layout.dotRadius, 0, Math.PI * 2);
+                    context.fill();
+                }
+                return;
+            }
+            if (root.activeColors === "palette" && !waveGradient) waveGradient = linearSpanGradient(context, height * 0.69, height * 0.09);
+            const ink = root.activeColors === "palette" ? waveGradient : root.core;
             context.fillStyle = ink;
             context.strokeStyle = ink;
-            context.shadowColor = root.colors === "palette" ? root.paletteStops[0] : root.core;
+            context.shadowColor = root.activeColors === "palette" ? root.paletteStops[0] : root.core;
             for (let age = 4; age >= 0; --age) {
                 context.globalAlpha = 0.025 + (4 - age) * 0.025;
                 context.lineWidth = 3 + age;
@@ -203,7 +319,7 @@ Item {
             context.stroke();
             if (!reflectionGradient) {
                 reflectionGradient = context.createLinearGradient(0, height * 0.69, 0, height * 0.96);
-                const near = root.colors === "palette" ? root.paletteStops[0] : root.core;
+                const near = root.activeColors === "palette" ? root.paletteStops[0] : root.core;
                 reflectionGradient.addColorStop(0, Qt.alpha(near, 0.33));
                 reflectionGradient.addColorStop(1, Qt.alpha(near, 0));
             }
@@ -221,17 +337,14 @@ Item {
     // Eitr's widget menu shows these options next to its own size and layer entries.
     function updateMenu() {
         if (typeof api.setMenu === "function")
-            api.setMenu([{id: "wave", text: "Wave", checked: style === "wave"},
-                         {id: "terminal", text: "Bars", checked: style === "terminal"},
-                         {id: "accent", text: "Accent", checked: colors === "accent", group: "Colors"},
-                         {id: "palette", text: "Palette", checked: colors === "palette", group: "Colors"}]);
+            api.setMenu(State.menuEntries(activeStyle, activeColors, Strings.tr));
     }
     Connections {
         target: root.api
         ignoreUnknownSignals: true
         function onMenuTriggered(id) {
-            if (id === "wave" || id === "terminal") root.style = id;
-            else if (id === "accent" || id === "palette") root.colors = id;
+            if (State.isStyleOption(id)) root.style = State.normalizeStyle(id);
+            else if (State.isColorOption(id)) root.colors = State.normalizeColors(id);
         }
     }
 }

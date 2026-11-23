@@ -387,14 +387,24 @@ class ManifestTests(unittest.TestCase):
         flags = eitr_plugin_install.live_flags(hardware)
         self.assertTrue(any('hardware' in flag.lower() for flag in flags), flags)
 
-        for plugin_id in ('notes', 'hardware'):
+        for plugin_id in ('notes', 'hardware', 'visualizer'):
             folder = ROOT / 'plugins' / plugin_id
             with tempfile.TemporaryDirectory() as temporary:
                 records = eitr_plugin_review.snapshot(folder, Path(temporary) / 'repository')
                 prompt = eitr_plugin_review.prompt(records, '.')
                 self.assertIn('eitr-plugin.json', prompt)
-            for qml in folder.glob('*.qml'):
-                self.assertLessEqual(len(qml.read_text().splitlines()), 400, qml.name)
+            for source_file in (*folder.glob('*.qml'), *folder.glob('*.js')):
+                self.assertLessEqual(len(source_file.read_text().splitlines()), 400, source_file.name)
+
+        visualizer = eitr_plugin_manifest.manifest(ROOT / 'plugins/visualizer')
+        self.assertEqual(visualizer['schemaVersion'], 2)
+        self.assertEqual(visualizer['id'], 'visualizer')
+        self.assertEqual(visualizer['version'], '0.3.0')
+        self.assertEqual(visualizer['capabilities'], ['audio-spectrum'])
+        vis_widget, = visualizer['ui']['widgets']
+        self.assertEqual((vis_widget['id'], vis_widget['surface']), ('visualizer', 'none'))
+        self.assertEqual((vis_widget['defaultWidth'], vis_widget['defaultHeight']), (900, 180))
+        self.assertEqual((vis_widget['minWidth'], vis_widget['minHeight']), (120, 40))
 
     def test_vpn_plugins_declare_bar_items_panels_and_bounded_qml(self):
         import eitr_plugin_manifest
@@ -484,6 +494,27 @@ class WidgetRenderAndHostTests(unittest.TestCase):
                 out = render_widgets.render_scene(scene)
                 header = out.read_bytes()[:8]
                 self.assertEqual(header, b'\x89PNG\r\n\x1a\n', scene['name'])
+
+            vis_scenes = render_widgets.visualizer_scenes(tmp)
+            vis_outputs = render_widgets.render_scenes_batch(vis_scenes)
+            self.assertEqual(len(vis_outputs), 20)
+            for out in vis_outputs:
+                self.assertEqual(out.read_bytes()[:8], b'\x89PNG\r\n\x1a\n', out.name)
+            from PIL import Image
+            with Image.open(Path(tmp) / 'visualizer-ring-wide-dark.png') as ring_wide:
+                self.assertEqual((ring_wide.width, ring_wide.height), (948, 228))
+                pixels = ring_wide.convert('RGB').load()
+                # Far left and far right outside the centred square must remain pure backdrop.
+                for y in range(24, ring_wide.height - 24, 12):
+                    self.assertEqual(pixels[48, y], pixels[8, y])
+                    self.assertEqual(pixels[ring_wide.width - 49, y], pixels[8, y])
+                # Inside the centred ring radius there must be rendered accent pixels.
+                center_x, center_y = ring_wide.width // 2, ring_wide.height // 2
+                ring_diffs = sum(
+                    1 for dx in range(-75, 76, 3) for dy in range(-75, 76, 3)
+                    if pixels[center_x + dx, center_y + dy] != pixels[8, center_y + dy]
+                )
+                self.assertGreater(ring_diffs, 20)
 
     def test_widget_contract_menus_persistence_and_escape(self):
         quickshell = shutil.which('quickshell')
@@ -660,6 +691,142 @@ ShellRoot {{
             self.assertTrue(payload['hwLoaded'])
             self.assertEqual(payload['hwMenuIds'], 'compact,detailed')
             self.assertEqual(payload['hwSavedMode'], 'compact')
+
+    def test_visualizer_options_migration_fallback_and_menu(self):
+        quickshell = shutil.which('quickshell')
+        if not quickshell:
+            self.skipTest('quickshell not available')
+        sys.path.insert(0, str(ROOT / 'tests'))
+        import render_widgets
+        vis_uri = render_widgets.VISUALIZER_QML.as_uri()
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            config_dir = tmp_path / 'config/eitr-plugin-visualizer'
+            config_dir.mkdir(parents=True, exist_ok=True)
+            options_file = config_dir / 'options.json'
+            options_file.write_text('{"version":1,"style":"terminal","colors":"palette"}\n', encoding='utf-8')
+            unknown_dir = tmp_path / 'config-unknown/eitr-plugin-visualizer'
+            unknown_dir.mkdir(parents=True, exist_ok=True)
+            (unknown_dir / 'options.json').write_text('{"version":1,"style":"mystery","colors":"unknown"}\n', encoding='utf-8')
+            wave_dir = tmp_path / 'config-wave/eitr-plugin-visualizer'
+            wave_dir.mkdir(parents=True, exist_ok=True)
+            (wave_dir / 'options.json').write_text('{"version":1,"style":"wave","colors":"accent"}\n', encoding='utf-8')
+            harness = tmp_path / 'visualizer_contract.qml'
+            harness.write_text(f"""import QtQuick
+import QtQuick.Window
+import Quickshell
+
+ShellRoot {{
+    Window {{
+        width: 320
+        height: 200
+        visible: true
+
+        QtObject {{
+            id: visApi
+            property color background: "#161821"
+            property color foreground: "#ebeef5"
+            property color accent: "#d5b55c"
+            property var palette: ({{
+                color1: "#e06c75",
+                color3: "#e5c07b",
+                color4: "#61afef",
+                color5: "#c678dd"
+            }})
+            property int spectrumBars: 64
+            property int spectrumFrameRate: 30
+            property bool spectrumSmoothing: false
+            property var spectrum: [0.6, 0.7, 0.8, 0.5]
+            property bool audioActive: true
+            property var menuEntries: []
+            signal menuTriggered(string id)
+            function setMenu(entries) {{ menuEntries = entries || []; }}
+        }}
+
+        Loader {{
+            id: visLoader
+            width: 240
+            height: 180
+            Component.onCompleted: setSource("{vis_uri}", {{ api: visApi }})
+        }}
+
+        Timer {{
+            id: stepTimer
+            interval: 90
+            running: true
+            repeat: true
+            property int step: 0
+            onTriggered: {{
+                if (step === 0) {{
+                    const initialStyle = visLoader.item.activeStyle;
+                    const initialColors = visLoader.item.activeColors;
+                    const menuIds = visApi.menuEntries.map(function(entry) {{ return entry.id; }}).join(",");
+                    visApi.menuTriggered("ring");
+                    visApi.menuTriggered("accent");
+                    console.log("VIS_STEP0:" + JSON.stringify({{
+                        initialStyle: initialStyle,
+                        initialColors: initialColors,
+                        menuIds: menuIds,
+                        afterRingStyle: visLoader.item.activeStyle,
+                        afterAccentColors: visLoader.item.activeColors
+                    }}));
+                    step = 1;
+                    return;
+                }}
+                Qt.quit();
+            }}
+        }}
+    }}
+}}
+""", encoding='utf-8')
+            env = os.environ.copy()
+            env['QT_QPA_PLATFORM'] = 'offscreen'
+            env['HOME'] = str(tmp_path / 'home')
+            env['XDG_CONFIG_HOME'] = str(tmp_path / 'config')
+            env['XDG_DATA_HOME'] = str(tmp_path / 'data')
+            env['XDG_STATE_HOME'] = str(tmp_path / 'state')
+            env['XDG_RUNTIME_DIR'] = str(tmp_path / 'runtime')
+            env['LANG'] = 'en_US.UTF-8'
+            for key in ('HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_RUNTIME_DIR'):
+                Path(env[key]).mkdir(parents=True, exist_ok=True)
+            os.chmod(env['XDG_RUNTIME_DIR'], 0o700)
+            result = subprocess.run(
+                [quickshell, '-p', str(harness), '--no-duplicate'],
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=20,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+            combined = result.stdout + '\n' + result.stderr
+            marker = [line for line in combined.splitlines() if 'VIS_STEP0:' in line]
+            self.assertTrue(marker, combined)
+            payload = json.loads(marker[-1].split('VIS_STEP0:', 1)[1])
+            self.assertEqual(payload['initialStyle'], 'bars')
+            self.assertEqual(payload['initialColors'], 'palette')
+            self.assertEqual(payload['menuIds'], 'wave,bars,ring,mirror,dots,accent,palette')
+            self.assertEqual(payload['afterRingStyle'], 'ring')
+            self.assertEqual(payload['afterAccentColors'], 'accent')
+            saved_disk = json.loads(options_file.read_text(encoding='utf-8'))
+            self.assertEqual(saved_disk, {'version': 1, 'style': 'ring', 'colors': 'accent'})
+
+            for cfg_path, expected_style in ((unknown_dir.parent, 'bars'), (wave_dir.parent, 'wave')):
+                env_case = env.copy()
+                env_case['XDG_CONFIG_HOME'] = str(cfg_path)
+                res_case = subprocess.run(
+                    [quickshell, '-p', str(harness), '--no-duplicate'],
+                    env=env_case,
+                    capture_output=True,
+                    text=True,
+                    timeout=20,
+                    check=False,
+                )
+                self.assertEqual(res_case.returncode, 0, res_case.stderr + res_case.stdout)
+                case_lines = [line for line in (res_case.stdout + '\n' + res_case.stderr).splitlines() if 'VIS_STEP0:' in line]
+                self.assertTrue(case_lines)
+                case_payload = json.loads(case_lines[-1].split('VIS_STEP0:', 1)[1])
+                self.assertEqual(case_payload['initialStyle'], expected_style)
 
 
 if __name__ == '__main__':

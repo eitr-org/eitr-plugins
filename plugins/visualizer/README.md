@@ -10,6 +10,12 @@ with whatever is playing on your computer and follows your theme colours.
   plays it relaxes into a low line.
 - **Bars**: classic spectrum bars from low to high tones, with a gradient in
   your theme's accent colour.
+- **Ring**: bars around a circle, growing outward from a faint base ring with
+  the spectrum mirrored so the ring is symmetric. Stays round and centred when
+  the widget is resized.
+- **Mirror**: bars growing up and down from a horizontal centre line.
+- **Dots**: a row of dots that rise with the level, for a lighter look on small
+  widgets.
 
 ## Colors
 

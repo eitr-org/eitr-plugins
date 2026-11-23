@@ -22,7 +22,7 @@ if [[ -x /usr/lib/qt6/bin/qmllint ]]; then
     plugins/*/*.qml
 fi
 if [[ -x /usr/lib/qt6/bin/qmllint ]]; then
-  /usr/lib/qt6/bin/qmllint plugins/notes/*.qml plugins/hardware/*.qml
+  /usr/lib/qt6/bin/qmllint plugins/notes/*.qml plugins/hardware/*.qml plugins/visualizer/*.qml
 fi
 if command -v shellcheck >/dev/null; then
   shellcheck tools/check.sh

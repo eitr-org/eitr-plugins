@@ -4,7 +4,7 @@ Official plugins for [Eitr](https://github.com/eitr-org/eitr), reviewed by the E
 
 | Plugin | What it does |
 |---|---|
-| [Visualizer](plugins/visualizer) | A desktop audio visualizer that moves with whatever is playing, in a Wave or Bars style |
+| [Visualizer](plugins/visualizer) | A desktop audio visualizer that moves with whatever is playing, in Wave, Bars, Ring, Mirror or Dots style |
 | [Lofi Radio](plugins/lofi-radio) | Lofi music through lowfi, controlled from the bar |
 | [Radio Globe](plugins/radio-globe) | Explore live radio on a globe, search stations and save favorites |
 | [WireGuard](plugins/wireguard) | WireGuard on the bar: import, connect, inspect and remove tunnels on iwd or NetworkManager |
