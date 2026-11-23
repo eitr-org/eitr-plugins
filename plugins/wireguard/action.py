@@ -9,9 +9,11 @@ import sys
 
 import status as wireguard_status
 from runtime import choose, collect, launch, open_terminal, run, Step, wait_for_escape
+import eitr_vpn
 from eitr_vpn import wireguard_summary
 
 WIREGUARD = Path(__file__).parent.name == 'wireguard'
+SYSTEM_HELPER = Path('/usr/lib/eitr/eitr-system')
 NAME_RE = re.compile(r'[A-Za-z0-9][A-Za-z0-9_-]{0,14}\Z')
 UUID_RE = re.compile(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\Z')
 BACKGROUND = ('up', 'down', 'connect', 'disconnect', 'remove')
@@ -110,6 +112,11 @@ def verify_nm_wireguard(identifier):
         raise ValueError('Only WireGuard connections are supported.')
 
 
+def supports_vpn_remove():
+    """Newer Eitr cores name 'remove' among their root VPN actions (eitr-system vpn-remove)."""
+    return 'remove' in getattr(eitr_vpn, 'ACTIONS', ())
+
+
 def remove_tunnel(target, active):
     if active:
         verify_nm_wireguard(target)
@@ -117,7 +124,11 @@ def remove_tunnel(target, active):
     else:
         if not NAME_RE.fullmatch(target):
             raise ValueError('Invalid tunnel name.')
-        run(['pkexec', '/usr/bin/rm', '-f', '--', '/etc/wireguard/' + target + '.conf'], timeout=120)
+        if supports_vpn_remove():
+            run(['pkexec', str(SYSTEM_HELPER), 'vpn-remove'],
+                input=json.dumps({'name': target, 'backend': 'wg-quick'}), timeout=120)
+        else:
+            run(['pkexec', '/usr/bin/rm', '-f', '--', '/etc/wireguard/' + target + '.conf'], timeout=120)
         forget_saved_tunnel(target)
 
 

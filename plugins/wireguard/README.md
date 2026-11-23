@@ -26,9 +26,12 @@ background polling while nothing shows them.
 ## Actions
 
 The panel runs `action.py` detached with fixed argv. Connecting, disconnecting and
-removing a tunnel use `nmcli` on NetworkManager or `pkexec` (`/usr/bin/wg-quick` and
-`/usr/bin/rm`) on iwd, so the desktop's authentication popup handles administrator
-approval and the bar never asks for passwords.
+removing a tunnel use `nmcli` on NetworkManager or `pkexec` on iwd (`/usr/bin/wg-quick`
+to connect or disconnect, and `/usr/lib/eitr/eitr-system vpn-remove` to stop
+`wg-quick@<name>.service`, take down the interface if it is up and delete the root-owned
+`/etc/wireguard/<name>.conf` profile, falling back to `pkexec /usr/bin/rm` on an older
+Eitr core without `vpn-remove`), so the desktop's authentication popup handles
+administrator approval with a clear prompt and the bar never asks for passwords.
 
 Import a config asks for a full `.conf` path and reviews it before importing. Hooks,
 SaveConfig and unsupported fields are refused. Keys and command errors are never

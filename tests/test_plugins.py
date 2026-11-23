@@ -111,13 +111,25 @@ class VPNTests(unittest.TestCase):
         plugin.nm_active = Mock(return_value=False)
         plugin.run.side_effect = None
         plugin.run.return_value = ''
-        with patch.object(plugin, 'forget_saved_tunnel') as forget:
+        # A core that lists 'remove' among its root VPN actions gets the clearer eitr-system prompt.
+        plugin.run.reset_mock()
+        with patch.object(plugin.eitr_vpn, 'ACTIONS', ('import', 'up', 'down', 'remove'), create=True), \
+             patch.object(plugin, 'forget_saved_tunnel') as forget:
+            plugin.background(['remove', 'office'])
+            forget.assert_called_once_with('office')
+        self.assertEqual(plugin.run.call_args.args[0], ['pkexec', '/usr/lib/eitr/eitr-system', 'vpn-remove'])
+        self.assertEqual(json.loads(plugin.run.call_args.kwargs['input']), {'name': 'office', 'backend': 'wg-quick'})
+        plugin.run.reset_mock()
+        with patch.object(plugin.eitr_vpn, 'ACTIONS', ('import', 'up', 'down'), create=True), \
+             patch.object(plugin, 'forget_saved_tunnel') as forget:
             plugin.background(['remove', 'office'])
             forget.assert_called_once_with('office')
         self.assertEqual(plugin.run.call_args.args[0], ['pkexec', '/usr/bin/rm', '-f', '--', '/etc/wireguard/office.conf'])
         with patch.object(plugin, 'notify'):
             with self.assertRaises(SystemExit):
                 plugin.background(['up', '../bad'])
+            with self.assertRaises(SystemExit):
+                plugin.background(['remove', '../bad'])
 
     def test_networkmanager_import_takes_the_new_profile_down(self):
         # NetworkManager starts a WireGuard profile as soon as it is added; the import must
