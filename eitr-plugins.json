@@ -36,6 +36,10 @@
     {
       "id": "notes",
       "path": "plugins/notes"
+    },
+    {
+      "id": "ollama",
+      "path": "plugins/ollama"
     }
   ]
 }

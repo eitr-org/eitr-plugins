@@ -9,6 +9,7 @@ Official plugins for [Eitr](https://github.com/eitr-org/eitr), reviewed by the E
 | [Radio Globe](plugins/radio-globe) | Explore live radio on a globe, search stations and save favorites |
 | [WireGuard](plugins/wireguard) | WireGuard on the bar: import, connect, inspect and remove tunnels on iwd or NetworkManager |
 | [NetworkManager VPN](plugins/networkmanager-vpn) | NetworkManager VPN on the bar: OpenVPN, OpenConnect and WireGuard profiles, connection details and import |
+| [Ollama](plugins/ollama) | Manage Eitr’s local AI service, models and downloads |
 | [Tailscale](plugins/tailscale) | Tailscale on the bar: connect, see your devices, copy their addresses and send or receive files |
 | [World clock](plugins/world-clock) | Offline city times immediately before the centred bar clock |
 | [Phone Link](plugins/phone-link) | Pair phones through KDE Connect, send files and clipboard text, and find your phone |

@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 2,
+  "id": "ollama",
+  "name": "Ollama",
+  "author": "The Eitr project",
+  "version": "0.1.0",
+  "description": "Manage Eitr’s local AI service, models and downloads",
+  "icon": "icon.svg",
+  "rows": [
+    {
+      "title": "Open Chat",
+      "description": "Open your default assistant, like SUPER + A",
+      "run": "action.py",
+      "arguments": [
+        "chat"
+      ]
+    }
+  ],
+  "ui": {
+    "barItems": [
+      {
+        "id": "status",
+        "title": "Ollama",
+        "qml": "OllamaBarIcon.qml",
+        "panel": "panel",
+        "dataCommand": {
+          "run": "status.py",
+          "arguments": [
+            "--bar"
+          ]
+        },
+        "refreshInterval": 30000
+      }
+    ],
+    "panels": [
+      {
+        "id": "panel",
+        "title": "Ollama",
+        "qml": "OllamaPanel.qml",
+        "surface": "panel",
+        "header": false,
+        "dataCommand": {
+          "run": "status.py",
+          "arguments": [
+            "--json"
+          ]
+        },
+        "refreshInterval": 2000
+      }
+    ]
+  }
+}
