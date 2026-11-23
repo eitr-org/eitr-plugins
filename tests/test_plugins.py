@@ -411,7 +411,7 @@ class ManifestTests(unittest.TestCase):
         visualizer = eitr_plugin_manifest.manifest(ROOT / 'plugins/visualizer')
         self.assertEqual(visualizer['schemaVersion'], 2)
         self.assertEqual(visualizer['id'], 'visualizer')
-        self.assertEqual(visualizer['version'], '0.3.0')
+        self.assertEqual(visualizer['version'], '0.3.1')
         self.assertEqual(visualizer['capabilities'], ['audio-spectrum'])
         vis_widget, = visualizer['ui']['widgets']
         self.assertEqual((vis_widget['id'], vis_widget['surface']), ('visualizer', 'none'))
@@ -780,7 +780,8 @@ ShellRoot {{
                         initialColors: initialColors,
                         menuIds: menuIds,
                         afterRingStyle: visLoader.item.activeStyle,
-                        afterAccentColors: visLoader.item.activeColors
+                        afterAccentColors: visLoader.item.activeColors,
+                        checkedAfter: visApi.menuEntries.filter(function(entry) {{ return entry.checked; }}).map(function(entry) {{ return entry.id; }}).join(",")
                     }}));
                     step = 1;
                     return;
@@ -820,6 +821,8 @@ ShellRoot {{
             self.assertEqual(payload['menuIds'], 'wave,bars,ring,mirror,dots,accent,palette')
             self.assertEqual(payload['afterRingStyle'], 'ring')
             self.assertEqual(payload['afterAccentColors'], 'accent')
+            # The widget menu highlights the new choice right away, not the one before it.
+            self.assertEqual(payload['checkedAfter'], 'ring,accent')
             saved_disk = json.loads(options_file.read_text(encoding='utf-8'))
             self.assertEqual(saved_disk, {'version': 1, 'style': 'ring', 'colors': 'accent'})
 

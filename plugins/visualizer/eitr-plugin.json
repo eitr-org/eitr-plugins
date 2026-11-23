@@ -3,7 +3,7 @@
   "id": "visualizer",
   "name": "Visualizer",
   "author": "The Eitr project",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Audio spectrum on your desktop: wave, bars, ring, mirror or dots",
   "rows": [],
   "capabilities": [

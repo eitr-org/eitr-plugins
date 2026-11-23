@@ -65,8 +65,8 @@ Item {
             Qt.callLater(flushSave);
         }
     }
-    onStyleChanged: { settled = false; canvas.requestPaint(); save(); updateMenu(); }
-    onColorsChanged: { clearGradients(); canvas.requestPaint(); save(); updateMenu(); }
+    onActiveStyleChanged: { settled = false; canvas.requestPaint(); save(); updateMenu(); }
+    onActiveColorsChanged: { clearGradients(); canvas.requestPaint(); save(); updateMenu(); }
     onPaletteStopsChanged: { clearGradients(); canvas.requestPaint(); }
     onCoreChanged: { canvas.reflectionGradient = null; canvas.requestPaint(); }
     onSecondAccentChanged: { clearGradients(); canvas.requestPaint(); }
