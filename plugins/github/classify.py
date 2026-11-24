@@ -34,8 +34,12 @@ def classify(pr, login, teams=(), options=None):
         latest[reviewer] = review
         if review["state"] in {"CHANGES_REQUESTED", "APPROVED", "DISMISSED"}:
             feedback[reviewer] = review
+    # A change request stops being the author's move once its reviewer is asked to review
+    # again: the pull request then waits on that reviewer (GitHub keeps the old decision).
+    rerequested = {name.casefold() for name in pr.get("requests", [])}
     change_requests = [review["login"] for reviewer, review in feedback.items()
-                       if review["state"] == "CHANGES_REQUESTED" and reviewer != login]
+                       if review["state"] == "CHANGES_REQUESTED" and reviewer != login
+                       and reviewer not in rerequested]
 
     if pr.get("draft"):
         return result(3, "Draft")

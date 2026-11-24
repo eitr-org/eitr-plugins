@@ -68,7 +68,9 @@ function reviewerState(state) {
 function reviewStatus(pr) {
     if (pr.conflict) return {glyph: "\u{F071}", key: "color3", label: "Merge conflict"};
     const states = reviewers(pr).map(reviewer => reviewer.state);
-    if (pr.decision === "CHANGES_REQUESTED" || states.includes("CHANGES_REQUESTED"))
+    // reviewers() reports a re-requested reviewer as "Requested", so an old change request
+    // whose reviewer was asked again reads as a pending review, not as changes requested.
+    if (states.includes("CHANGES_REQUESTED"))
         return {glyph: "\u{F12DF}", key: "color1", label: "Changes requested"};
     if (pr.decision === "APPROVED" || (!pr.decision && states.includes("APPROVED")))
         return {glyph: "\u{F0008}", key: "color2", label: "Approved"};

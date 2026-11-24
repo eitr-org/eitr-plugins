@@ -97,6 +97,14 @@ class ClassificationTests(unittest.TestCase):
         self.assertEqual(assessment(other, while_changes_requested=True)["group"], 1)
         self.assertEqual(assessment(other, bots=["LARK"])["group"], 1)
 
+    def test_change_request_waits_on_a_rerequested_reviewer(self):
+        # GitHub keeps CHANGES_REQUESTED until the reviewer reviews again; once the author asks
+        # them again, the pull request waits on that reviewer.
+        own = pull(author="finch", reviews=[review(PEER, "CHANGES_REQUESTED")], requests=[PEER["login"]])
+        own["decision"] = "CHANGES_REQUESTED"
+        self.assertEqual(assessment(own)["group"], 3)
+        self.assertNotIn("Changes requested", assessment(own)["reasons"])
+
     def test_direct_and_team_request_modes(self):
         pr = pull(team_requests=[TEAM])
         self.assertEqual(assessment(pr)["group"], 1)

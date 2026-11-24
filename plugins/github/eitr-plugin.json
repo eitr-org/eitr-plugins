@@ -3,7 +3,7 @@
   "id": "github",
   "name": "GitHub",
   "author": "The Eitr project",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "See which GitHub pull requests need your attention",
   "icon": "icon.svg",
   "packages": [
