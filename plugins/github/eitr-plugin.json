@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 2,
+  "id": "github",
+  "name": "GitHub",
+  "author": "The Eitr project",
+  "version": "1.0.0",
+  "description": "See which GitHub pull requests need your attention",
+  "icon": "icon.svg",
+  "packages": [
+    "github-cli",
+    "libnotify"
+  ],
+  "service": {
+    "run": "service.py"
+  },
+  "rows": [
+    {
+      "title": "GitHub: Your move",
+      "description": "Open the pull request radar",
+      "run": "action.py",
+      "arguments": [
+        "panel"
+      ]
+    }
+  ],
+  "ui": {
+    "barItems": [
+      {
+        "id": "status",
+        "title": "GitHub",
+        "slot": "start",
+        "qml": "GitHubBarIcon.qml",
+        "panel": "radar"
+      }
+    ],
+    "panels": [
+      {
+        "id": "radar",
+        "title": "GitHub",
+        "qml": "GitHubPanel.qml",
+        "header": false,
+        "surface": "panel",
+        "width": 620,
+        "maxHeight": 650
+      }
+    ]
+  }
+}

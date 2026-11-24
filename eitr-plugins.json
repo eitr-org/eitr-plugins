@@ -40,6 +40,10 @@
     {
       "id": "ollama",
       "path": "plugins/ollama"
+    },
+    {
+      "id": "github",
+      "path": "plugins/github"
     }
   ]
 }

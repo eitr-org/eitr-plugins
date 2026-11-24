@@ -14,6 +14,7 @@ Official plugins for [Eitr](https://github.com/eitr-org/eitr), reviewed by the E
 | [World clock](plugins/world-clock) | Offline city times immediately before the centred bar clock |
 | [Phone Link](plugins/phone-link) | Pair phones through KDE Connect, send files and clipboard text, and find your phone |
 | [Notes](plugins/notes) | Sticky notes on your desktop, saved separately per note copy |
+| [GitHub](plugins/github) | See which pull requests across your GitHub accounts need your attention |
 
 ## Install
 

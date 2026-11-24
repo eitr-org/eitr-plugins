@@ -356,7 +356,7 @@ class ManifestTests(unittest.TestCase):
         import eitr_plugin_review
         # Plugins with QML panels are larger than the local assistant's 24 KiB context, so their
         # review goes through the Claude transport, as an installer with Claude would.
-        for identifier, transport in (('wireguard', 'claude'), ('networkmanager-vpn', 'claude'), ('tailscale', 'claude'), ('ollama', 'claude')):
+        for identifier, transport in (('wireguard', 'claude'), ('networkmanager-vpn', 'claude'), ('tailscale', 'claude'), ('ollama', 'claude'), ('github', 'claude')):
             folder = ROOT / 'plugins' / identifier
             self.assertEqual(eitr_plugin_manifest.manifest(folder)['id'], identifier)
             with tempfile.TemporaryDirectory() as temporary:
@@ -372,7 +372,7 @@ class ManifestTests(unittest.TestCase):
                 result = eitr_plugin_review.check(folder)
                 self.assertIn('Offline review transport verified.', result)
                 self.assertIn('action.py', assistant.call_args.args[0])
-        self.assertEqual(len(eitr_plugin_manifest.repository_plugins(ROOT)), 10)
+        self.assertEqual(len(eitr_plugin_manifest.repository_plugins(ROOT)), 11)
 
     def test_notes_and_visualizer_manifests_limits_and_review(self):
         import eitr_plugin_install
